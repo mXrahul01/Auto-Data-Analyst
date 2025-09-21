@@ -513,19 +513,19 @@ function canProceedToNextStep() {
     switch (state.currentStep) {
         case 1:
             if (!state.selectedTask) {
-                showToast('कृपया कोई टास्क चुनें', 'warning');
+                showToast('Please Select A Task', 'warning');
                 return false;
             }
             return true;
         case 2:
             if (!state.selectedMode) {
-                showToast('कृपया कोई मोड चुनें', 'warning');
+                showToast('Please Select A Mode', 'warning');
                 return false;
             }
             return true;
         case 3:
             if (!state.uploadedFile && !state.selectedDataset) {
-                showToast('कृपया फाइल अपलोड करें या सैंपल डेटासेट चुनें', 'warning');
+                showToast('Please Upload A File Or Select A Sample Dataset', 'warning');
                 return false;
             }
             return true;
@@ -538,13 +538,13 @@ function canProceedToNextStep() {
         case 5:
             const hasSelectedMethods = Object.values(state.selectedFeatureEngineering).some(arr => arr.length > 0);
             if (state.selectedTask !== 'automated_ml' && !hasSelectedMethods) {
-                showToast('कम से कम एक फीचर इंजीनियरिंग मेथड चुनें', 'warning');
+                showToast('Select At Least One Feature Engineering Method', 'warning');
                 return false;
             }
             return true;
         case 6:
             if (state.selectedMode === 'training' && !state.selectedModel && state.selectedTask === 'manual_ml') {
-                showToast('कृपया कोई मॉडल चुनें', 'warning');
+                showToast('Please Select A Model', 'warning');
                 return false;
             }
             return true;
@@ -620,7 +620,7 @@ function selectTask(taskType) {
     document.querySelector(`[data-task="${taskType}"]`).classList.add('selected');
     updateNavigationButtons();
     
-    showToast(`टास्क चुना गया: ${getTaskDisplayName(taskType)}`, 'success');
+    showToast(`Task Selected: ${getTaskDisplayName(taskType)}`, 'success');
 }
 
 function selectMode(mode) {
@@ -642,8 +642,8 @@ function selectMode(mode) {
     
     updateNavigationButtons();
     
-    const modeDisplayName = mode === 'visualization' ? 'सिर्फ विजुअलाइज़ेशन' : 'मॉडल ट्रेनिंग';
-    showToast(`मोड चुना गया: ${modeDisplayName}`, 'success');
+    const modeDisplayName = mode === 'visualization' ? 'Only Visualization' : 'Model Training';
+    showToast(`Mode Selected: ${modeDisplayName}`, 'success');
 }
 
 function selectExecution(execution) {
@@ -658,12 +658,12 @@ function selectExecution(execution) {
 
 function getTaskDisplayName(taskType) {
     const taskNames = {
-        'eda': 'एक्स्प्लोरेटरी डेटा एनालिसिस',
-        'manual_ml': 'मैन्युअल मशीन लर्निंग',
-        'automated_ml': 'ऑटोमेटेड मशीन लर्निंग',
-        'clustering': 'क्लस्टरिंग',
-        'anomaly': 'एनोमली डिटेक्शन',
-        'timeseries': 'टाइम सीरीज एनालिसिस'
+        'eda': 'Exploratory Data Analysis',
+        'manual_ml': 'Manual Machine Learning',
+        'automated_ml': 'Automated Machine Learning',
+        'clustering': 'Clustering',
+        'anomaly': 'Anomaly Detection',
+        'timeseries': 'Time Series Analysis'
     };
     return taskNames[taskType] || taskType;
 }
@@ -702,18 +702,18 @@ async function processUploadedFile(file) {
     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
     
     if (!allowedTypes.includes(fileExtension)) {
-        showToast('कृपया CSV, Excel, या JSON फाइल अपलोड करें', 'error');
+        showToast('Please Upload CSV, Excel, Or JSON File', 'error');
         return;
     }
     
     if (file.size > 100 * 1024 * 1024) {
-        showToast('फाइल साइज़ 100MB से कम होना चाहिए', 'error');
+        showToast('File Size Must Be Less Than 100MB', 'error');
         return;
     }
     
     // Show upload progress
     elements.uploadProgress.classList.remove('hidden');
-    elements.uploadStatus.textContent = 'अपलोड हो रहा है...';
+    elements.uploadStatus.textContent = 'Uploading...';
     
     // Simulate progress for demo
     let progress = 0;
@@ -723,7 +723,7 @@ async function processUploadedFile(file) {
         
         if (progress >= 100) {
             clearInterval(progressInterval);
-            elements.uploadStatus.textContent = 'अपलोड पूरा हुआ!';
+            elements.uploadStatus.textContent = 'File Uploaded!';
         }
     }, 200);
     
@@ -741,11 +741,11 @@ async function processUploadedFile(file) {
         });
         
         await showDataPreview(file, result.dataset_info);
-        showToast(`फाइल अपलोड हुई: ${file.name}`, 'success');
+        showToast(`File Uploaded: ${file.name}`, 'success');
         updateNavigationButtons();
         
     } catch (error) {
-        showToast('फाइल अपलोड में समस्या हुई', 'error');
+        showToast('Issue In File Upload', 'error');
         console.error('Upload failed:', error);
     } finally {
         setTimeout(() => {
@@ -768,7 +768,7 @@ async function selectSampleDataset(datasetName) {
     
     const dataset = sampleData.datasets.find(d => d.name === datasetName);
     await showDataPreview(null, dataset);
-    showToast(`डेटासेट चुना गया: ${datasetName}`, 'success');
+    showToast(`Database Chosen: ${datasetName}`, 'success');
     updateNavigationButtons();
 }
 
@@ -883,13 +883,13 @@ function generateSampleTable(container, datasetName) {
 
 function generateDataInsights(container, datasetName) {
     const insights = [
-        { icon: '📊', text: 'डेटा गुणवत्ता अच्छी है' },
-        { icon: '🎯', text: 'टारगेट कॉलम का सुझाव दिया गया है' },
-        { icon: '🔢', text: 'न्यूमेरिकल और कैटेगोरिकल फीचर्स मिले हैं' },
-        { icon: '✅', text: 'मशीन लर्निंग के लिए उपयुक्त है' }
+        { icon: '📊', text: 'Target Column Suggested' },
+        { icon: '🎯', text: 'Target Column Suggested' },
+        { icon: '🔢', text: 'Both Numerical And Categorical Features Found' },
+        { icon: '✅', text: 'Useful for Machine Learning' }
     ];
     
-    container.innerHTML = '<h4>डेटा इनसाइट्स</h4>';
+    container.innerHTML = '<h4>Data Insights</h4>';
     
     insights.forEach(insight => {
         const item = document.createElement('div');
@@ -952,28 +952,28 @@ function requiresTargetColumn() {
 // Configuration
 function updateConfigurationSummary() {
     document.getElementById('selectedTask').textContent = getTaskDisplayName(state.selectedTask);
-    document.getElementById('selectedMode').textContent = state.selectedMode === 'visualization' ? 'सिर्फ विजुअलाइज़ेशन' : 'मॉडल ट्रेनिंग';
-    document.getElementById('selectedExecution').textContent = state.selectedExecution === 'local' ? 'लोकल' : 'कगल';
+    document.getElementById('selectedMode').textContent = state.selectedMode === 'visualization' ? 'Visualization' : 'Model Training';
+    document.getElementById('selectedExecution').textContent = state.selectedExecution === 'local' ? 'Local' : 'Kaggle';
     document.getElementById('selectedDataset').textContent = state.uploadedFile ? state.uploadedFile.name : state.selectedDataset;
     
     // Determine problem type
-    let problemType = 'अज्ञात';
+    let problemType = 'Unknown';
     if (state.selectedDataset) {
         const dataset = sampleData.datasets.find(d => d.name === state.selectedDataset);
         if (dataset) {
             const typeMap = {
-                'classification': 'वर्गीकरण',
-                'regression': 'रिग्रेशन',
-                'time_series': 'टाइम सीरीज'
+                'classification': 'Classification',
+                'regression': 'Regression',
+                'time_series': 'Time Series'
             };
             problemType = typeMap[dataset.task] || dataset.task;
         }
     } else if (state.selectedTask === 'clustering') {
-        problemType = 'क्लस्टरिंग';
+        problemType = 'Clustering';
     } else if (state.selectedTask === 'anomaly') {
-        problemType = 'एनोमली डिटेक्शन';
+        problemType = 'Anomaly Detection';
     } else if (state.selectedTask === 'timeseries') {
-        problemType = 'टाइम सीरीज';
+        problemType = 'Time Series';
     }
     
     document.getElementById('detectedProblemType').textContent = problemType;
@@ -984,7 +984,7 @@ async function loadFeatureEngineering() {
     if (state.selectedTask === 'automated_ml') {
         // Skip feature engineering selection for automated ML
         document.getElementById('featureEngineeringDescription').textContent = 
-            'ऑटोमेटेड ML में सभी फीचर इंजीनियरिंग टास्क्स अपने आप हो जाएंगे';
+            'All Feature Engineering Tasks Will Be Automatically Done In Automated ML';
         return;
     }
     
@@ -1045,7 +1045,7 @@ function applyAllRecommendations() {
         });
     });
     
-    showToast('सभी सुझाए गए मेथड्स लागू किए गए', 'success');
+    showToast('All Suggested Methods Applied', 'success');
 }
 
 function handleFeatureEngineeringSelection(event) {
@@ -1075,7 +1075,7 @@ function updateSelectedMethodsSummary() {
     });
     
     if (allMethods.length === 0) {
-        container.innerHTML = '<p class="no-methods">कोई मेथड्स चुने नहीं गए हैं</p>';
+        container.innerHTML = '<p class="no-methods">No Methods Selected</p>';
         return;
     }
     
@@ -1084,8 +1084,7 @@ function updateSelectedMethodsSummary() {
         tag.className = 'selected-method-tag';
         tag.innerHTML = `
             <span>${item.method}</span>
-            <button class="remove-method" data-category="${item.category}" data-method="${item.method}">×</button>
-        `;
+            <button class="remove-method" data-category="${item.category}" data-method="${item.method}">×</button>`;
         
         tag.querySelector('.remove-method').addEventListener('click', (e) => {
             const { category, method } = e.target.dataset;
@@ -1136,7 +1135,7 @@ function createModelRecommendationCard(model) {
             ${model.pros.map(pro => `<span class="pro-tag">${pro}</span>`).join('')}
         </div>
         <div style="margin-top: 12px; font-size: 12px; color: var(--color-text-secondary);">
-            अनुमानित समय: ${model.estimatedTime}
+            Estimated Time: ${model.estimatedTime}
         </div>
     `;
     
@@ -1201,11 +1200,11 @@ async function startAnalysis() {
             simulateTraining();
         }
         
-        showToast('ट्रेनिंग शुरू हो गई!', 'success');
+        showToast('Training Started!', 'success');
         
     } catch (error) {
         console.error('Training start failed:', error);
-        showToast('ट्रेनिंग शुरू करने में समस्या', 'error');
+        showToast('Issue In Starting Training', 'error');
         
         // Fallback to simulation
         simulateTraining();
@@ -1227,15 +1226,15 @@ function updateTrainingProgress(progress) {
 
 function updateCurrentStage(stage, description) {
     const stageMap = {
-        'uploading': 'अपलोड हो रहा है...',
-        'analyzing': 'डेटा का विश्लेषण',
-        'preprocessing': 'डेटा प्री-प्रोसेसिंग',
-        'feature_engineering': 'फीचर इंजीनियरिंग',
-        'model_selection': 'मॉडल चयन',
-        'training': 'मॉडल ट्रेनिंग',
-        'evaluation': 'मॉडल मूल्यांकन',
-        'generating_insights': 'इनसाइट्स जेनरेशन',
-        'completed': 'पूरा हुआ'
+        'uploading': 'Uploading...',
+        'analyzing': 'Analyzing',
+        'preprocessing': 'Data Preprocessing',
+        'feature_engineering': 'FeatureE ngineering',
+        'model_selection': 'Model Selection',
+        'training': 'Model Training',
+        'evaluation': 'Model Evaluation',
+        'generating_insights': 'Generating Insights',
+        'completed': 'Completed!'
     };
     
     elements.currentStage.textContent = stageMap[stage] || stage;
@@ -1283,13 +1282,13 @@ function cancelTraining() {
 // Training Simulation (for demo mode)
 function simulateTraining() {
     const stages = [
-        { name: 'analyzing', description: 'डेटा का विश्लेषण कर रहे हैं', duration: 1500 },
-        { name: 'preprocessing', description: 'डेटा को साफ और तैयार कर रहे हैं', duration: 2000 },
-        { name: 'feature_engineering', description: 'फीचर इंजीनियरिंग लागू कर रहे हैं', duration: 1800 },
-        { name: 'model_selection', description: 'सबसे अच्छा मॉडल चुन रहे हैं', duration: 2500 },
-        { name: 'training', description: 'मशीन लर्निंग मॉडल को ट्रेन कर रहे हैं', duration: 3000 },
-        { name: 'evaluation', description: 'मॉडल की परफॉर्मेंस चेक कर रहे हैं', duration: 1500 },
-        { name: 'generating_insights', description: 'विज़ुअलाइज़ेशन और इनसाइट्स बना रहे हैं', duration: 1200 }
+        { name: 'analyzing', description: 'Analyzing The Data', duration: 1500 },
+        { name: 'preprocessing', description: 'Cleaning And Preparing The Data', duration: 2000 },
+        { name: 'feature_engineering', description: 'Applying Feature Engineering', duration: 1800 },
+        { name: 'model_selection', description: 'Selecting The Best Model', duration: 2500 },
+        { name: 'training', description: 'Training The Machine Learning Model', duration: 3000 },
+        { name: 'evaluation', description: 'Checking The Models Performance', duration: 1500 },
+        { name: 'generating_insights', description: 'Creating Visualizations And Insights', duration: 1200 }
     ];
     
     let currentStage = 0;
@@ -1325,7 +1324,7 @@ function simulateTraining() {
                         setTimeout(updateTrainingProgress, 300);
                     } else {
                         // Training complete
-                        updateCurrentStage('completed', 'विश्लेषण पूरा हुआ!');
+                        updateCurrentStage('completed', 'Analysis Completed!');
                         generateSampleResults();
                         setTimeout(() => {
                             goToNextStep();
@@ -1362,19 +1361,19 @@ function generateSampleResults() {
         },
         insights: {
             key_findings: [
-                'मॉडल ने 94% सटीकता हासिल की है',
-                'Feature_1 सबसे महत्वपूर्ण प्रेडिक्टर है',
-                'डेटा में कोई ओवरफिटिंग नहीं दिखी'
+                'The Model Achieved 94% Accuracy',
+                'Feature_1 Is The Most Important Predictor',
+                'No Overfitting Observed In The Data'
             ],
             data_insights: [
-                'डेटा गुणवत्ता उत्कृष्ट है',
-                'सभी फीचर्स उपयोगी हैं',
-                'टारगेट वेरिएबल संतुलित है'
+                'Data Quality Is Excellent',
+                'All Features Are Useful',
+                'Target Variable Is Balanced'
             ],
             recommendations: [
-                'इस मॉडल को प्रोडक्शन में डिप्लॉय कर सकते हैं',
-                'Feature_1 की प्रोडक्शन में मॉनिटरिंग करें',
-                'और डेटा के लिए Feature_5 पर ध्यान दें'
+                'This Model Can Be Deployed In Production',
+                'Monitor Feature_1 In Production',
+                'Focus On Feature_5 For Data'
             ]
         },
         applied_methods: ['standard scaling', 'onehot encoding', 'simple imputation'],
@@ -1660,7 +1659,7 @@ function generateSessionId() {
 }
 
 function populateTaskDisplayNames() {
-    // This function can be used to populate task names in Hindi if needed
+    // This function can be used to populate task 
 }
 
 function showLoadingOverlay(text) {
@@ -1675,7 +1674,7 @@ function hideLoadingOverlay() {
 // Action Functions
 function downloadResults() {
     if (!state.analysisResults) {
-        showToast('डाउनलोड करने के लिए कोई परिणाम नहीं मिला', 'warning');
+        showToast('No Results Found To Download', 'warning');
         return;
     }
     
@@ -1704,19 +1703,19 @@ function downloadResults() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast('परिणाम सफलतापूर्वक डाउनलोड हुए', 'success');
+    showToast('Results Successfully Downloaded', 'success');
 }
 
 function deployModel() {
-    showToast('मॉडल डिप्लॉयमेंट फीचर जल्द आएगा', 'info');
+    showToast('Model Deployment Feature Will Come Soon', 'info');
 }
 
 function downloadModel() {
-    showToast('मॉडल डाउनलोड फीचर जल्द आएगा', 'info');
+    showToast('Model Download Feature Will Come Soon', 'info');
 }
 
 function startNewAnalysis() {
-    if (confirm('क्या आप नया विश्लेषण शुरू करना चाहते हैं?')) {
+    if (confirm('Do You Want To Start A New Analysis?')) {
         // Reset state
         Object.assign(state, {
             currentStep: 1,
@@ -1789,7 +1788,7 @@ function startNewAnalysis() {
         updateNavigationButtons();
         updateProgressBar();
         
-        showToast('नया विश्लेषण शुरू किया गया', 'success');
+        showToast('New Analysis Started', 'success');
     }
 }
 
@@ -1806,10 +1805,10 @@ function showToast(message, type = 'info') {
     };
     
     const titles = {
-        success: 'सफल',
-        error: 'त्रुटि',
-        warning: 'चेतावनी',
-        info: 'जानकारी'
+        success: 'Success',
+        error: 'Error',
+        warning: 'Warning',
+        info: 'Information'
     };
     
     toast.innerHTML = `
