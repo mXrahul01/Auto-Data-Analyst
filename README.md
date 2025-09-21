@@ -497,6 +497,5 @@ If you find this project helpful, please:
 
 ---
 
-**Built with ❤️ by [mXrahul01](https://github.com/mXrahul01)**
-                     **Rahul Talvar**
+**   Built with ❤️ by [Rahul Talvar](https://github.com/mXrahul01)**
 **Auto Data Analyst - Making AI Accessible to Everyone** 🚀
