@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Data Analyst - Real Backend Integration</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>🔬 Auto Data Analyst</h1>
+                    <span class="tagline">AI-Powered Analytics Platform</span>
+                </div>
+                <nav class="nav">
+                    <a href="#" class="nav-link active">Dashboard</a>
+                    <a href="#" class="nav-link">Projects</a>
+                    <div class="connection-status">
+                        <span class="status-indicator" id="connectionStatus">🔴</span>
+                        <span class="status-text">Connecting...</span>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Progress Bar -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">Select Task</div>
+                    </div>
+                    <div class="progress-step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Choose Mode</div>
+                    </div>
+                    <div class="progress-step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Upload Data</div>
+                    </div>
+                    <div class="progress-step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-label">Configure</div>
+                    </div>
+                    <div class="progress-step" data-step="5">
+                        <div class="step-number">5</div>
+                        <div class="step-label">Feature Engineering</div>
+                    </div>
+                    <div class="progress-step" data-step="6">
+                        <div class="step-number">6</div>
+                        <div class="step-label">Train/Analyze</div>
+                    </div>
+                    <div class="progress-step" data-step="7">
+                        <div class="step-number">7</div>
+                        <div class="step-label">Results</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 1: Task Selection -->
+            <div class="step-container active" id="step1">
+                <div class="step-header">
+                    <h2>Select Analysis Task</h2>
+                    <p>Choose the type of analysis you want to perform on your data</p>
+                </div>
+                
+                <div class="task-grid">
+                    <div class="task-card" data-task="eda">
+                        <div class="task-icon">📊</div>
+                        <h3>EDA Only</h3>
+                        <p>Exploratory Data Analysis with comprehensive visualizations</p>
+                        <div class="task-meta">
+                            <span class="complexity low">Low</span>
+                            <span class="time-estimate">2-5 minutes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card" data-task="manual_ml">
+                        <div class="task-icon">🎯</div>
+                        <h3>Manual ML</h3>
+                        <p>User-driven model selection with intelligent recommendations</p>
+                        <div class="task-meta">
+                            <span class="complexity medium">Medium</span>
+                            <span class="time-estimate">10-30 minutes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card" data-task="automated_ml">
+                        <div class="task-icon">🤖</div>
+                        <h3>Automated ML</h3>
+                        <p>Fully automated model selection, training, and optimization</p>
+                        <div class="task-meta">
+                            <span class="complexity high">High</span>
+                            <span class="time-estimate">15-60 minutes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card" data-task="clustering">
+                        <div class="task-icon">🔍</div>
+                        <h3>Clustering</h3>
+                        <p>Unsupervised pattern discovery and data segmentation</p>
+                        <div class="task-meta">
+                            <span class="complexity medium">Medium</span>
+                            <span class="time-estimate">10-20 minutes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card" data-task="anomaly">
+                        <div class="task-icon">⚠️</div>
+                        <h3>Anomaly Detection</h3>
+                        <p>Identify outliers and unusual patterns in your data</p>
+                        <div class="task-meta">
+                            <span class="complexity medium">Medium</span>
+                            <span class="time-estimate">5-15 minutes</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-card" data-task="timeseries">
+                        <div class="task-icon">📈</div>
+                        <h3>Time Series</h3>
+                        <p>Temporal data analysis and forecasting</p>
+                        <div class="task-meta">
+                            <span class="complexity high">High</span>
+                            <span class="time-estimate">20-45 minutes</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Mode Selection -->
+            <div class="step-container" id="step2">
+                <div class="step-header">
+                    <h2>Choose Execution Mode</h2>
+                    <p>Select how you want to execute your analysis</p>
+                </div>
+                
+                <div class="mode-selection">
+                    <div class="mode-card" data-mode="visualization">
+                        <div class="mode-icon">📊</div>
+                        <h3>Visualization Only</h3>
+                        <p>Generate insights and visualizations without model training</p>
+                        <ul class="mode-benefits">
+                            <li>Instant results</li>
+                            <li>No computation overhead</li>
+                            <li>Perfect for exploration</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mode-card" data-mode="training">
+                        <div class="mode-icon">🚀</div>
+                        <h3>Train Model</h3>
+                        <p>Train machine learning models for predictions and insights</p>
+                        <ul class="mode-benefits">
+                            <li>Predictive capabilities</li>
+                            <li>Performance metrics</li>
+                            <li>Feature importance</li>
+                        </ul>
+                        <div class="execution-options">
+                            <div class="execution-option" data-execution="local">
+                                <span class="exec-icon">💻</span>
+                                <span>Local Execution</span>
+                            </div>
+                            <div class="execution-option" data-execution="kaggle">
+                                <span class="exec-icon">🏆</span>
+                                <span>Kaggle Execution</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Data Upload -->
+            <div class="step-container" id="step3">
+                <div class="step-header">
+                    <h2>Upload Your Dataset</h2>
+                    <p>Upload your data file or use one of our sample datasets</p>
+                </div>
+                
+                <div class="upload-section">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">
+                            <h3>Drag and drop your file here</h3>
+                            <p>or <button class="btn btn--outline" id="browseBtn">browse to upload</button></p>
+                            <small>Supports CSV, Excel, and JSON files up to 100MB</small>
+                        </div>
+                        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.json" style="display: none;">
+                        <div class="upload-progress hidden" id="uploadProgress">
+                            <div class="progress-bar-upload">
+                                <div class="progress-fill" id="progressFill"></div>
+                            </div>
+                            <div class="upload-status" id="uploadStatus">Uploading...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="divider">
+                        <span>or choose a sample dataset</span>
+                    </div>
+                    
+                    <div class="sample-datasets">
+                        <div class="dataset-card" data-dataset="iris">
+                            <h4>🌺 Iris Dataset</h4>
+                            <p>150 rows × 5 columns</p>
+                            <span class="dataset-type">Classification</span>
+                        </div>
+                        <div class="dataset-card" data-dataset="housing">
+                            <h4>🏠 Housing Dataset</h4>
+                            <p>506 rows × 14 columns</p>
+                            <span class="dataset-type">Regression</span>
+                        </div>
+                        <div class="dataset-card" data-dataset="sales">
+                            <h4>📊 Sales Dataset</h4>
+                            <p>365 rows × 3 columns</p>
+                            <span class="dataset-type">Time Series</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data Preview -->
+                <div class="data-preview hidden" id="dataPreview">
+                    <h3>Data Analysis Results</h3>
+                    <div class="preview-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="rowCount">-</div>
+                            <div class="stat-label">Rows</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="colCount">-</div>
+                            <div class="stat-label">Columns</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="missingPercent">-</div>
+                            <div class="stat-label">Missing %</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="dataQuality">-</div>
+                            <div class="stat-label">Quality Score</div>
+                        </div>
+                    </div>
+                    <div class="preview-table" id="previewTable"></div>
+                    <div class="data-insights" id="dataInsights"></div>
+                </div>
+            </div>
+
+            <!-- Step 4: Configuration -->
+            <div class="step-container" id="step4">
+                <div class="step-header">
+                    <h2>Configure Analysis</h2>
+                    <p>Select target column and configure analysis parameters</p>
+                </div>
+                
+                <div class="config-section">
+                    <div class="config-grid">
+                        <div class="config-left">
+                            <div class="form-group">
+                                <label class="form-label">Target Column</label>
+                                <select class="form-control" id="targetColumn">
+                                    <option value="">Auto-detect target column...</option>
+                                </select>
+                                <small class="form-help">The system will automatically suggest the best target column</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Problem Type</label>
+                                <select class="form-control" id="problemType">
+                                    <option value="auto">Auto-detect</option>
+                                    <option value="classification">Classification</option>
+                                    <option value="regression">Regression</option>
+                                    <option value="clustering">Clustering</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Validation Strategy</label>
+                                <select class="form-control" id="validationStrategy">
+                                    <option value="train_test_split">Train-Test Split (80-20)</option>
+                                    <option value="cross_validation">Cross Validation (5-fold)</option>
+                                    <option value="time_series_split">Time Series Split</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="config-right">
+                            <div class="task-summary">
+                                <h3>Analysis Summary</h3>
+                                <div class="summary-item">
+                                    <strong>Task:</strong> <span id="selectedTask">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <strong>Mode:</strong> <span id="selectedMode">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <strong>Execution:</strong> <span id="selectedExecution">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <strong>Dataset:</strong> <span id="selectedDataset">-</span>
+                                </div>
+                                <div class="summary-item">
+                                    <strong>Problem Type:</strong> <span id="detectedProblemType">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Feature Engineering -->
+            <div class="step-container" id="step5">
+                <div class="step-header">
+                    <h2>Feature Engineering Selection</h2>
+                    <p id="featureEngineeringDescription">Select the feature engineering methods to apply to your data</p>
+                </div>
+                
+                <div class="feature-engineering-section">
+                    <div class="auto-recommendations" id="autoRecommendations">
+                        <div class="recommendation-header">
+                            <h3>🎯 Recommended Methods</h3>
+                            <p>Based on your data analysis, we recommend these feature engineering techniques:</p>
+                        </div>
+                        <div class="recommended-methods" id="recommendedMethods"></div>
+                        <button class="btn btn--outline" id="applyRecommendations">Apply All Recommendations</button>
+                    </div>
+                    
+                    <div class="feature-categories">
+                        <div class="category-card">
+                            <div class="category-header">
+                                <h3>🔤 Categorical Encoding</h3>
+                                <p>Transform categorical variables into numerical format</p>
+                            </div>
+                            <div class="method-options">
+                                <label class="method-option">
+                                    <input type="checkbox" name="encoding" value="onehot">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>One-Hot Encoding</strong>
+                                        <small>Best for nominal categories with low cardinality</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="encoding" value="target">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Target Encoding</strong>
+                                        <small>Good for high cardinality categorical features</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="encoding" value="binary">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Binary Encoding</strong>
+                                        <small>Memory efficient for high cardinality</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="encoding" value="hashing">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Hashing Encoding</strong>
+                                        <small>For extremely high cardinality features</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="category-card">
+                            <div class="category-header">
+                                <h3>⚖️ Feature Scaling</h3>
+                                <p>Normalize numerical features to similar scales</p>
+                            </div>
+                            <div class="method-options">
+                                <label class="method-option">
+                                    <input type="checkbox" name="scaling" value="standard">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Standard Scaling</strong>
+                                        <small>Mean=0, std=1. Good for normal distributions</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="scaling" value="minmax">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Min-Max Scaling</strong>
+                                        <small>Scale to [0,1]. Good for neural networks</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="scaling" value="robust">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Robust Scaling</strong>
+                                        <small>Uses median and IQR. Robust to outliers</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="scaling" value="quantile">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Quantile Scaling</strong>
+                                        <small>Maps to uniform distribution</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="category-card">
+                            <div class="category-header">
+                                <h3>🔧 Missing Value Imputation</h3>
+                                <p>Fill missing values using various strategies</p>
+                            </div>
+                            <div class="method-options">
+                                <label class="method-option">
+                                    <input type="checkbox" name="imputation" value="simple">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Simple Imputation</strong>
+                                        <small>Mean/median/mode imputation</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="imputation" value="knn">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>KNN Imputation</strong>
+                                        <small>Use similar samples for imputation</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="imputation" value="iterative">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Iterative Imputation</strong>
+                                        <small>Model-based iterative imputation</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="category-card">
+                            <div class="category-header">
+                                <h3>🎯 Feature Selection</h3>
+                                <p>Select most important features for modeling</p>
+                            </div>
+                            <div class="method-options">
+                                <label class="method-option">
+                                    <input type="checkbox" name="selection" value="statistical">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Statistical Selection</strong>
+                                        <small>Chi-square, ANOVA F-test</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="selection" value="model_based">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Model-Based Selection</strong>
+                                        <small>Use model coefficients/importance</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="selection" value="recursive">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Recursive Elimination</strong>
+                                        <small>Iteratively remove features</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="category-card">
+                            <div class="category-header">
+                                <h3>🔗 Feature Interactions</h3>
+                                <p>Create new features from existing ones</p>
+                            </div>
+                            <div class="method-options">
+                                <label class="method-option">
+                                    <input type="checkbox" name="interactions" value="polynomial">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Polynomial Features</strong>
+                                        <small>x², x³, x*y interactions</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="interactions" value="ratio">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Ratio Features</strong>
+                                        <small>Create ratios between features</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="interactions" value="combinations">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>Feature Combinations</strong>
+                                        <small>Sum, difference, product operations</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="category-card">
+                            <div class="category-header">
+                                <h3>📉 Dimensionality Reduction</h3>
+                                <p>Reduce feature space while preserving information</p>
+                            </div>
+                            <div class="method-options">
+                                <label class="method-option">
+                                    <input type="checkbox" name="dimensionality" value="pca">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>PCA</strong>
+                                        <small>Principal Component Analysis</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="dimensionality" value="lda">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>LDA</strong>
+                                        <small>Linear Discriminant Analysis</small>
+                                    </div>
+                                </label>
+                                <label class="method-option">
+                                    <input type="checkbox" name="dimensionality" value="umap">
+                                    <span class="checkmark"></span>
+                                    <div class="method-info">
+                                        <strong>UMAP</strong>
+                                        <small>Uniform Manifold Approximation</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-methods" id="selectedMethods">
+                        <h3>Selected Methods</h3>
+                        <div class="methods-summary" id="methodsSummary">
+                            <p class="no-methods">No methods selected yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Model Training/Analysis -->
+            <div class="step-container" id="step6">
+                <!-- Manual Mode Model Recommendations -->
+                <div class="manual-section" id="manualSection">
+                    <div class="step-header">
+                        <h2>Model Recommendations</h2>
+                        <p>AI-powered model recommendations based on your data and configuration</p>
+                    </div>
+                    
+                    <div class="recommendations-grid" id="recommendationsGrid">
+                        <!-- Model cards will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Automated Mode or Training Progress -->
+                <div class="training-section hidden" id="trainingSection">
+                    <div class="step-header">
+                        <h2>Training in Progress</h2>
+                        <p id="trainingDescription">Your model is being trained. This may take a few minutes.</p>
+                    </div>
+                    
+                    <div class="training-dashboard">
+                        <div class="training-progress">
+                            <div class="progress-circle">
+                                <div class="progress-value" id="progressValue">0%</div>
+                            </div>
+                            <div class="training-status">
+                                <h3 id="currentStage">Initializing...</h3>
+                                <p id="stageDescription">Setting up the training environment</p>
+                                <div class="estimated-time">
+                                    Estimated time: <span id="estimatedTime">calculating...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="training-details">
+                            <div class="detail-card">
+                                <h4>Current Stage</h4>
+                                <div class="stage-progress">
+                                    <div class="stage-bar">
+                                        <div class="stage-fill" id="stageFill"></div>
+                                    </div>
+                                    <span id="stageProgress">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="detail-card">
+                                <h4>Execution Environment</h4>
+                                <div class="exec-env" id="executionEnv">
+                                    <span class="env-icon">💻</span>
+                                    <span class="env-text">Local Machine</span>
+                                </div>
+                            </div>
+                            
+                            <div class="detail-card">
+                                <h4>Session ID</h4>
+                                <div class="session-id" id="sessionId">-</div>
+                            </div>
+                        </div>
+                        
+                        <div class="training-logs">
+                            <div class="logs-header">
+                                <h4>Training Logs</h4>
+                                <button class="btn btn--sm btn--outline" id="toggleLogs">Show Details</button>
+                            </div>
+                            <div class="logs-content hidden" id="logsContent">
+                                <div class="log-entries" id="logEntries"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="training-actions">
+                            <button class="btn btn--outline" id="pauseTraining">Pause Training</button>
+                            <button class="btn btn--outline" id="cancelTraining">Cancel Training</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7: Results -->
+            <div class="step-container" id="step7">
+                <div class="step-header">
+                    <h2>Analysis Results</h2>
+                    <p>Your analysis is complete! Here are the comprehensive insights and results.</p>
+                </div>
+                
+                <div class="results-dashboard">
+                    <!-- Quick Stats -->
+                    <div class="quick-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Training Time:</span>
+                            <span class="stat-value" id="trainingTime">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Best Model:</span>
+                            <span class="stat-value" id="bestModel">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Data Quality:</span>
+                            <span class="stat-value" id="finalDataQuality">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Metrics -->
+                    <div class="metrics-section">
+                        <h3>Model Performance</h3>
+                        <div class="metrics-grid" id="metricsGrid">
+                            <div class="metric-card">
+                                <div class="metric-value" id="accuracyMetric">-</div>
+                                <div class="metric-label">Accuracy</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="precisionMetric">-</div>
+                                <div class="metric-label">Precision</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="recallMetric">-</div>
+                                <div class="metric-label">Recall</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-value" id="f1Metric">-</div>
+                                <div class="metric-label">F1 Score</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visualizations -->
+                    <div class="charts-section">
+                        <div class="charts-grid">
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <h3>Feature Importance</h3>
+                                <canvas id="featureChart"></canvas>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <h3>Model Performance</h3>
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <h3>Training Progress</h3>
+                                <canvas id="trainingChart"></canvas>
+                            </div>
+                            <div class="chart-container" style="position: relative; height: 400px;">
+                                <h3>Data Distribution</h3>
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Business Insights -->
+                    <div class="insights-section">
+                        <h3>Business Insights</h3>
+                        <div class="insights-grid">
+                            <div class="insight-category">
+                                <h4>🎯 Key Findings</h4>
+                                <div class="insights-list" id="keyFindings"></div>
+                            </div>
+                            <div class="insight-category">
+                                <h4>📊 Data Insights</h4>
+                                <div class="insights-list" id="dataInsightsList"></div>
+                            </div>
+                            <div class="insight-category">
+                                <h4>🚀 Recommendations</h4>
+                                <div class="insights-list" id="recommendationsList"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Model Details -->
+                    <div class="model-details-section">
+                        <h3>Model Details</h3>
+                        <div class="model-info-grid">
+                            <div class="model-info-card">
+                                <h4>Feature Engineering Applied</h4>
+                                <div class="applied-methods" id="appliedMethods"></div>
+                            </div>
+                            <div class="model-info-card">
+                                <h4>Hyperparameters</h4>
+                                <div class="hyperparams" id="hyperParameters"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="results-actions">
+                        <button class="btn btn--primary" id="downloadResults">
+                            📥 Download Complete Report
+                        </button>
+                        <button class="btn btn--outline" id="deployModel">
+                            🚀 Deploy Model
+                        </button>
+                        <button class="btn btn--outline" id="downloadModel">
+                            💾 Download Model
+                        </button>
+                        <button class="btn btn--outline" id="startNew">
+                            🔄 Start New Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="navigation-controls">
+                <button class="btn btn--outline" id="prevBtn" disabled>Previous</button>
+                <button class="btn btn--primary" id="nextBtn">Next</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="loading-text">Processing...</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
