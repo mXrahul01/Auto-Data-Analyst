@@ -10,7 +10,7 @@
 **Auto Data Analyst** is a cutting-edge, AI-powered data analysis platform designed to democratize machine learning and data science. Built with enterprise-grade architecture, it provides automated ML pipelines, advanced feature engineering, and real-time insights generation without requiring any coding knowledge.
 
 ### 🎯 Vision
-Empower everyone - from business analysts to data scientists - to extract meaningful insights from their data using the power of artificial intelligence.
+Empower everyone - from business analysts to data scientists - to extract meaningful insights from their data using the power of Artificial Intelligence.
 
 ## ✨ Key Features
 
