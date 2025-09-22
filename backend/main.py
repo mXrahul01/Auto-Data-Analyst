@@ -179,31 +179,25 @@ except ImportError:
     PSUTIL_AVAILABLE = False
 
 # Configuration and settings
-from backend.config import settings, validate_and_setup_config
+from .config import settings, validate_and_setup_config
 
 # Database models and schemas
-from backend.models.database import (
-    get_db, engine, Base, init_database, 
-    get_db_session, create_tables
-)
-from backend.models import schemas
+from .models.database import get_db, engine, Base, init_database, get_db_session, create_tables
+from .models import schemas
 
 # Service layer dependencies
-from backend.services.data_service import DataService, get_data_service
-from backend.services.ml_service import MLService, get_ml_service
-from backend.services.insights_service import InsightsService, get_insights_service
-from backend.services.mlops_service import MLOpsService, get_mlops_service
-from backend.services.auth_service import AuthService, get_auth_service
-
+from .services.data_service import DataService, get_data_service
+from .services.ml_service import MLService, get_ml_service
+from .services.insights_service import InsightsService, get_insights_service
+from .services.mlops_service import MLOpsService, get_mlops_service
+from .services.auth_service import AuthService, get_auth_service
 # Utility modules
-from backend.utils.monitoring import (
-    MonitoringManager, create_monitoring_manager,
-    log_info, log_warning, log_error, monitor_performance
-)
-from backend.utils.validation import validate_dataset, ValidationResult
-from backend.utils.preprocessing import preprocess_data
-from backend.utils.security import SecurityManager, get_security_manager
-from backend.utils.cache import CacheManager, get_cache_manager
+from .utils.monitoring import MonitoringManager, create_monitoring_manager, log_info, log_warning, log_error, monitor_performance
+from .utils.validation import validate_dataset, ValidationResult
+from .utils.preprocessing import preprocess_data
+from .utils.security import SecurityManager, get_security_manager
+from .utils.cache import CacheManager, get_cache_manager
+from .tasks import execute_analysis, process_uploaded_dataset, execute_batch_predictions, create_insights
 
 # Task processing
 from backend.tasks import (
