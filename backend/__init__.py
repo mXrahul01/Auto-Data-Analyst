@@ -1,30 +1,34 @@
-
 """
-Auto-Analyst Backend Package
+Auto-Data-Analyst Backend Package
 
-Main backend package for the Auto-Analyst AI-powered data analysis platform.
-Provides enterprise-grade ML capabilities with zero-code interface.
+Provides enterprise-grade AI-powered data analysis services:
+- Automated ML pipelines
+- Feature engineering
+- Real-time insights
+- Secure, production-ready API
 """
 
 __version__ = "2.0.0"
-__author__ = "Auto-Analyst Team"
-__email__ = "contact@auto-analyst.com"
+__author__ = "Rahul Talvar"
+__email__ = "rahultalvar902@gmail.com"
 
-# Package imports with error handling
+# Initialize package-level logging
 import logging
-import warnings
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
-# Configure logging
-logging.getLogger(__name__).addHandler(logging.NullHandler())
+# Ensure environment variables are loaded early
+from backend.config import settings, validate_and_setup_config
+validate_and_setup_config()
 
-# Suppress common warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
-warnings.filterwarnings("ignore", category=FutureWarning, module="tensorflow")
+# Expose key modules for convenience
+from backend.main import app  # FastAPI app instance
 
-# Package metadata
 __all__ = [
+    "app",
+    "settings",
+    "validate_and_setup_config",
     "__version__",
-    "__author__", 
-    "__email__"
+    "__author__",
+    "__email__",
 ]
-
