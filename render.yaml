@@ -1,0 +1,143 @@
+# Render Deployment Configuration for Auto-Analyst Platform
+# Place this in render.yaml in the project root
+
+services:
+  # =====================================
+  # MAIN WEB SERVICE
+  # =====================================
+  - type: web
+    name: auto-analyst-backend
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    
+    # BUILD CONFIGURATION
+    buildCommand: |
+      pip install --upgrade pip &&
+      pip install -r requirements.txt &&
+      python -c "from backend.models.database import init_database; import asyncio; asyncio.run(init_database())" &&
+      alembic upgrade head
+    
+    # START COMMAND - FIXED for production
+    startCommand: |
+      gunicorn backend.main:app \
+        -w 4 \
+        -k uvicorn.workers.UvicornWorker \
+        --bind 0.0.0.0:$PORT \
+        --timeout 300 \
+        --max-requests 1000 \
+        --max-requests-jitter 50 \
+        --preload \
+        --access-logfile - \
+        --error-logfile -
+    
+    # HEALTH CHECK
+    healthCheckPath: /health
+    
+    # ENVIRONMENT VARIABLES
+    envVars:
+      # Core Application
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: APP_NAME
+        value: Auto-Analyst Platform
+      - key: APP_VERSION
+        value: 2.0.0
+      
+      # Python Configuration
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      
+      # Database - Use Render's internal database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: auto-analyst-db
+          property: connectionString
+      
+      # Security - Generate these in Render dashboard
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      
+      # CORS Configuration
+      - key: CORS_ORIGINS
+        value: '["https://auto-analyst-frontend.onrender.com","http://localhost:3000"]'
+      
+      # File Upload Settings
+      - key: UPLOAD_MAX_SIZE
+        value: "21474836480"
+      - key: TEMP_DIRECTORY
+        value: "/tmp"
+      
+      # Logging
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_FORMAT
+        value: json
+      
+      # Performance
+      - key: MAX_TRAINING_TIME
+        value: "3600"
+      - key: ENABLE_GPU
+        value: false
+      
+      # Monitoring
+      - key: ENABLE_MONITORING
+        value: true
+      - key: PROMETHEUS_ENABLED
+        value: false
+
+  # =====================================
+  # POSTGRESQL DATABASE
+  # =====================================  
+  - type: pserv
+    name: auto-analyst-db
+    plan: free
+    region: oregon
+    databaseName: auto_analyst
+    databaseUser: auto_analyst_user
+    
+# =====================================
+# ADDITIONAL SERVICES (Optional)
+# =====================================
+
+# Redis for caching and background tasks
+# - type: redis
+#   name: auto-analyst-redis
+#   plan: free
+#   region: oregon
+
+# Static site for frontend (if separate)  
+# - type: static
+#   name: auto-analyst-frontend
+#   buildCommand: npm run build
+#   publishPath: ./dist
+#   branch: main
+#   envVars:
+#     - key: REACT_APP_API_URL
+#       value: https://auto-analyst-backend.onrender.com
+
+# =====================================
+# DEPLOYMENT NOTES
+# =====================================
+
+# 1. Connect your GitHub repository to Render
+# 2. Create a new Web Service and point to this render.yaml
+# 3. Add the PostgreSQL database service
+# 4. Generate SECRET_KEY and JWT_SECRET_KEY in environment variables:
+#    - SECRET_KEY: Generate a 32+ character random string
+#    - JWT_SECRET_KEY: Generate a 32+ character random string
+# 5. Deploy and monitor logs for any issues
+
+# Environment Variable Examples:
+# SECRET_KEY: "your-super-secret-32-plus-character-key-here-change-this"
+# JWT_SECRET_KEY: "another-super-secret-32-plus-character-jwt-key-here"
+
+# Database URL Format:
+# postgresql://username:password@host:port/database_name
