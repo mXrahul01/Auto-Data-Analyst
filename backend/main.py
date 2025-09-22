@@ -1,4 +1,4 @@
-""".
+"""
 Auto-Analyst Platform - FastAPI Application Entrypoint
 
 This module serves as the main FastAPI application entrypoint for the Auto-Analyst platform,
@@ -77,10 +77,10 @@ Dependencies:
 
 Usage Examples:
     # Development with auto-reload
-    uvicorn models.main:app --reload --host 0.0.0.0 --port 8000 --log-level debug
+    uvicorn main:app --reload --host 0.0.0.0 --port 8000 --log-level debug
     
     # Production with multiple workers
-    gunicorn models.main:app -w 4 -k uvicorn.workers.UvicornWorker \
+    gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker \
         --bind 0.0.0.0:8000 --timeout 300 --max-requests 1000
     
     # Docker container
