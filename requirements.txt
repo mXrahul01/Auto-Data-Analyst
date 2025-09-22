@@ -1,42 +1,132 @@
+# Auto-Analyst Platform Dependencies
+# Production-ready with pinned versions for stability
+
+# ============================================
+# CORE WEB FRAMEWORK
+# ============================================
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 gunicorn==21.2.0
+python-multipart==0.0.6
+
+# ============================================
+# DATABASE & ORM
+# ============================================
 sqlalchemy==2.0.23
 alembic==1.12.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+# ============================================
+# DATA VALIDATION & SERIALIZATION
+# ============================================
 pydantic==2.5.0
 pydantic-settings==2.1.0
-python-multipart==0.0.6
+
+# ============================================
+# AUTHENTICATION & SECURITY
+# ============================================
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-aiofiles==23.2.1
+cryptography==41.0.7
+
+# ============================================
+# DATA PROCESSING CORE
+# ============================================
 pandas==2.1.4
 numpy==1.25.2
 scikit-learn==1.3.2
+
+# ============================================
+# MACHINE LEARNING ALGORITHMS
+# ============================================
 xgboost==2.0.2
 lightgbm==4.1.0
-tensorflow==2.15.0
-torch==2.1.2
-transformers==4.36.2
-mlflow==2.8.1
-redis==5.0.1
-celery==5.3.4
-prometheus-client==0.19.0
-prometheus-fastapi-instrumentator==6.1.0
-psutil==5.9.6
-python-dotenv==1.0.0
-httpx==0.25.2
-asyncpg==0.29.0
-psycopg2-binary==2.9.9
+catboost==1.2.2
+
+# ============================================
+# DEEP LEARNING (Optional - Large dependencies)
+# ============================================
+# tensorflow==2.15.0  # Uncomment if needed - 500MB+
+# torch==2.1.2         # Uncomment if needed - 800MB+
+# transformers==4.36.2 # Uncomment if needed - 400MB+
+
+# ============================================
+# TIME SERIES & FORECASTING
+# ============================================
+prophet==1.1.4
+statsmodels==0.14.1
+
+# ============================================
+# FILE PROCESSING
+# ============================================
+aiofiles==23.2.1
 openpyxl==3.1.2
 pyarrow==14.0.2
+
+# ============================================
+# VISUALIZATION
+# ============================================
 plotly==5.17.0
 seaborn==0.13.0
 matplotlib==3.8.2
+
+# ============================================
+# STATISTICS & MATH
+# ============================================
 scipy==1.11.4
-statsmodels==0.14.1
+
+# ============================================
+# HYPERPARAMETER TUNING
+# ============================================
 optuna==3.4.0
+
+# ============================================
+# MODEL EXPLAINABILITY
+# ============================================
 shap==0.43.0
 lime==0.2.0.1
+
+# ============================================
+# MLOPS & EXPERIMENT TRACKING
+# ============================================
+mlflow==2.8.1
+
+# ============================================
+# BACKGROUND TASKS
+# ============================================
+redis==5.0.1
+celery==5.3.4
+
+# ============================================
+# MONITORING & OBSERVABILITY
+# ============================================
+prometheus-client==0.19.0
+prometheus-fastapi-instrumentator==6.1.0
+
+# ============================================
+# UTILITIES
+# ============================================
 joblib==1.3.2
 cloudpickle==3.0.0
 requests==2.31.0
+python-dotenv==1.0.0
+httpx==0.25.2
+psutil==5.9.6
+dateutil==2.8.2
+
+# ============================================
+# FEATURE ENGINEERING
+# ============================================
+category-encoders==2.5.1
+imbalanced-learn==0.11.0
+
+# ============================================
+# DEVELOPMENT & TESTING (Optional)
+# ============================================
+# pytest==7.4.3
+# pytest-asyncio==0.21.1
+# pytest-cov==4.1.0
+# flake8==6.1.0
+# mypy==1.7.1
+# black==23.11.0
