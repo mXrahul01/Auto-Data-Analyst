@@ -1,4 +1,4 @@
-"""
+""".
 Auto-Analyst Platform - FastAPI Application Entrypoint
 
 This module serves as the main FastAPI application entrypoint for the Auto-Analyst platform,
