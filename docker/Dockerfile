@@ -1,78 +1,116 @@
-# 🏆 PRODUCTION DOCKERFILE - Multi-stage build for optimal size and security
+# Dockerfile
+# Multi-stage production-ready Dockerfile for ML serving
 
-# =================== BUILDER STAGE ===================
-FROM python:3.11-slim as builder
+# =============================================================================
+# Base Python image with ML optimizations
+# =============================================================================
+FROM python:3.11-slim as base
 
-# Set build arguments
-ARG ENVIRONMENT=production
-ARG BUILD_DATE
-ARG VERSION=3.0.0
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# =============================================================================
+# Dependencies stage
+# =============================================================================
+FROM base as dependencies
+
+# Set working directory
+WORKDIR /app
 
 # Copy requirements
-COPY requirements/ /tmp/requirements/
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /tmp/requirements/prod.txt
+COPY requirements.txt .
 
-# =================== PRODUCTION STAGE ===================
-FROM python:3.11-slim as production
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Set labels for container metadata
-LABEL maintainer="Auto-Analyst Team" \
-      version="${VERSION}" \
-      description="Auto-Analyst Platform - Production Container" \
-      build-date="${BUILD_DATE}"
+# =============================================================================
+# Production stage
+# =============================================================================
+FROM base as production
 
-# Create non-root user for security
-RUN groupadd -r autoanalyst && useradd -r -g autoanalyst -s /bin/false autoanalyst
+# Copy installed packages from dependencies stage
+COPY --from=dependencies /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=dependencies /usr/local/bin /usr/local/bin
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy virtual environment from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Create application directories
+# Set working directory
 WORKDIR /app
-RUN mkdir -p /app/uploads /app/models /app/logs \
-    && chown -R autoanalyst:autoanalyst /app
 
 # Copy application code
-COPY --chown=autoanalyst:autoanalyst backend/ /app/backend/
-COPY --chown=autoanalyst:autoanalyst frontend/ /app/frontend/
-COPY --chown=autoanalyst:autoanalyst migrations/ /app/migrations/
-COPY --chown=autoanalyst:autoanalyst alembic.ini /app/
+COPY backend/ ./backend/
+COPY models/ ./models/
+COPY .env.example .env
 
-# Set environment variables
-ENV PYTHONPATH=/app \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    ENVIRONMENT=production \
-    PORT=8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+# Set ownership
+RUN chown -R appuser:appuser /app
 
 # Switch to non-root user
-USER autoanalyst
+USER appuser
+
+# Create necessary directories
+RUN mkdir -p logs data/uploads
 
 # Expose port
 EXPOSE 8000
 
-# Run database migrations and start application
-CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --workers 4"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Default command
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+
+# =============================================================================
+# GPU-enabled variant
+# =============================================================================
+FROM nvidia/cuda:11.8-runtime-ubuntu20.04 as gpu-base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Install Python and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-pip \
+    python3.11-dev \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic link for python
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
+
+FROM gpu-base as gpu-production
+
+WORKDIR /app
+
+# Copy requirements with GPU support
+COPY requirements.gpu.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY backend/ ./backend/
+COPY models/ ./models/
+
+# Non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
