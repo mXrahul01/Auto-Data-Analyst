@@ -1,347 +1,898 @@
 """
-Database Models for Auto-Analyst Platform - PostgreSQL Ready
+🚀 AUTO-ANALYST PLATFORM - DATABASE MODELS & CONNECTION MANAGEMENT
+================================================================
 
-FIXES APPLIED:
-- ✅ PostgreSQL compatibility with proper types
-- ✅ Environment variable configuration
-- ✅ Connection pooling for production
-- ✅ Async/await support
-- ✅ Error handling with retries
-- ✅ FastAPI dependency injection
+Production-ready database layer with:
+- SQLAlchemy 2.0+ async/sync dual support
+- Robust connection pooling and error handling
+- Comprehensive data models with validation
+- Health monitoring and observability
+- Type-safe operations with full validation
+- Multi-database support (PostgreSQL, SQLite, MySQL)
+
+Dependencies:
+- sqlalchemy>=2.0.0
+- asyncpg (for async PostgreSQL)
+- psycopg2-binary (for sync PostgreSQL)
 """
 
 import os
 import logging
+import asyncio
 from contextlib import asynccontextmanager
-from typing import Generator, Optional, Dict, Any
-from datetime import datetime, timezone
-import uuid
-from enum import Enum
-
-from sqlalchemy import (
-    create_engine, Column, Integer, String, Text, DateTime, 
-    Boolean, Float, JSON, ForeignKey, event, pool
+from typing import (
+    Dict, Any, Optional, Generator, AsyncGenerator, 
+    Union, List, Type, TypeVar
 )
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy.orm import sessionmaker, Session, relationship
+from datetime import datetime, timezone
+from enum import Enum
+import uuid
+import hashlib
+from functools import lru_cache
+
+# SQLAlchemy 2.0+ imports
+from sqlalchemy import (
+    create_engine, select, text, event,
+    Column, Integer, String, Text, DateTime, 
+    Boolean, Float, JSON, ForeignKey, Index,
+    MetaData, Table
+)
+from sqlalchemy.ext.asyncio import (
+    create_async_engine, AsyncSession, async_sessionmaker,
+    AsyncEngine
+)
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, relationship,
+    Session, sessionmaker, declared_attr
+)
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.sql import func
 from sqlalchemy.engine import Engine
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.pool import QueuePool, NullPool
+from sqlalchemy.exc import SQLAlchemyError, DisconnectionError
+
+# Pydantic for validation
+try:
+    from pydantic import BaseModel as PydanticBase, Field, validator
+except ImportError:
+    # Fallback if Pydantic not available
+    PydanticBase = object
+    Field = lambda **kwargs: None
+    validator = lambda *args, **kwargs: lambda f: f
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Database configuration from environment
-class DatabaseConfig:
-    """Production-ready database configuration."""
+# Type variables
+ModelType = TypeVar("ModelType", bound="BaseModel")
+
+
+# =============================================================================
+# CONFIGURATION & ENUMS
+# =============================================================================
+
+class DatabaseType(str, Enum):
+    """Supported database types."""
+    POSTGRESQL = "postgresql"
+    SQLITE = "sqlite"
+    MYSQL = "mysql"
+
+
+class AnalysisStatus(str, Enum):
+    """Analysis execution status."""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class DatasetStatus(str, Enum):
+    """Dataset processing status."""
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    PROCESSED = "processed"
+    ERROR = "error"
+
+
+class ExecutionMode(str, Enum):
+    """ML execution modes."""
+    LOCAL_CPU = "local_cpu"
+    LOCAL_GPU = "local_gpu"
+    REMOTE_KAGGLE = "remote_kaggle"
+    REMOTE_COLAB = "remote_colab"
+    CLOUD_AWS = "cloud_aws"
+    CLOUD_GCP = "cloud_gcp"
+
+
+@lru_cache()
+def get_database_config() -> Dict[str, Any]:
+    """Get database configuration from environment variables."""
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        # Fallback to SQLite for development
+        database_url = "sqlite:///./auto_analyst.db"
+        logger.warning("DATABASE_URL not set, using SQLite fallback")
     
-    def __init__(self):
-        self.DATABASE_URL = os.getenv("DATABASE_URL")
-        if not self.DATABASE_URL:
-            raise ValueError("DATABASE_URL environment variable is required")
-        
-        # Handle postgres:// vs postgresql:// for SQLAlchemy 2.0+
-        if self.DATABASE_URL.startswith("postgres://"):
-            self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        
-        # Connection pool settings
-        self.POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
-        self.MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
-        self.POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))
-        self.POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "3600"))
-        
-        # Environment settings
-        self.ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
-        self.DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+    # Handle postgres:// vs postgresql:// for modern SQLAlchemy
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    return {
+        "database_url": database_url,
+        "async_database_url": database_url.replace("postgresql://", "postgresql+asyncpg://")
+        if "postgresql://" in database_url else database_url,
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "20")),
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+        "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "3600")),
+        "echo": os.getenv("DB_ECHO", "false").lower() == "true",
+        "environment": os.getenv("ENVIRONMENT", "development"),
+    }
 
-# Global configuration
-db_config = DatabaseConfig()
 
-# SQLAlchemy Base
-Base = declarative_base()
+# =============================================================================
+# DECLARATIVE BASE & MODELS
+# =============================================================================
 
-# Database engine and session
-engine: Optional[Engine] = None
-SessionLocal: Optional[sessionmaker] = None
+class Base(DeclarativeBase):
+    """SQLAlchemy 2.0 declarative base with metadata configuration."""
+    
+    metadata = MetaData(
+        naming_convention={
+            "ix": "ix_%(column_0_label)s",
+            "uq": "uq_%(table_name)s_%(column_0_name)s",
+            "ck": "ck_%(table_name)s_%(constraint_name)s",
+            "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+            "pk": "pk_%(table_name)s"
+        }
+    )
+
 
 class BaseModel(Base):
-    """Base model with common fields and functionality."""
+    """
+    Base model with common fields and functionality.
+    
+    Provides:
+    - Automatic table naming
+    - Common timestamp fields
+    - Dictionary conversion
+    - Validation helpers
+    """
     
     __abstract__ = True
     
-    @declared_attr
-    def __tablename__(cls):
-        """Generate table name from class name."""
-        return cls.__name__.lower()
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
+        """Generate table name from class name (snake_case)."""
+        import re
+        return re.sub(r'(?<!^)(?=[A-Z])', '_', cls.__name__).lower()
     
-    # Primary key
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    # Primary key with proper type hints
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     
-    # Timestamps with timezone support (PostgreSQL)
-    created_at = Column(
-        DateTime(timezone=True), 
-        server_default=func.now(), 
+    # Timestamps with timezone support
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
         nullable=False,
         comment="Record creation timestamp"
     )
-    updated_at = Column(
-        DateTime(timezone=True), 
-        server_default=func.now(), 
-        onupdate=func.now(), 
+    
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
         nullable=False,
         comment="Record last update timestamp"
     )
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert model instance to dictionary."""
+    def to_dict(self, include_relationships: bool = False) -> Dict[str, Any]:
+        """
+        Convert model instance to dictionary.
+        
+        Args:
+            include_relationships: Whether to include relationship data
+            
+        Returns:
+            Dictionary representation of the model
+        """
         result = {}
+        
+        # Include column data
         for column in self.__table__.columns:
             value = getattr(self, column.name)
+            
+            # Handle special types
             if isinstance(value, datetime):
                 value = value.isoformat()
             elif isinstance(value, uuid.UUID):
                 value = str(value)
+            elif isinstance(value, Enum):
+                value = value.value
+                
             result[column.name] = value
+        
+        # Include relationships if requested
+        if include_relationships:
+            for relationship_name in self.__mapper__.relationships.keys():
+                relationship_value = getattr(self, relationship_name)
+                if relationship_value is not None:
+                    if hasattr(relationship_value, '__iter__'):
+                        # One-to-many relationship
+                        result[relationship_name] = [
+                            item.to_dict() if hasattr(item, 'to_dict') else str(item)
+                            for item in relationship_value
+                        ]
+                    else:
+                        # One-to-one relationship
+                        result[relationship_name] = (
+                            relationship_value.to_dict() 
+                            if hasattr(relationship_value, 'to_dict') 
+                            else str(relationship_value)
+                        )
+        
         return result
+    
+    @classmethod
+    def from_dict(cls: Type[ModelType], data: Dict[str, Any]) -> ModelType:
+        """
+        Create model instance from dictionary.
+        
+        Args:
+            data: Dictionary with model data
+            
+        Returns:
+            Model instance
+        """
+        # Filter out non-column keys
+        column_names = {column.name for column in cls.__table__.columns}
+        filtered_data = {k: v for k, v in data.items() if k in column_names}
+        
+        return cls(**filtered_data)
+
 
 class User(BaseModel):
-    """User accounts and authentication."""
+    """
+    User accounts and authentication.
+    
+    Stores user information, authentication details, and preferences.
+    """
     
     __tablename__ = "users"
     
     # User identification
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    username = Column(String(100), unique=True, nullable=False, index=True)
-    full_name = Column(String(255), nullable=True)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True,
+        comment="User email address (unique)"
+    )
+    username: Mapped[str] = mapped_column(
+        String(100), unique=True, nullable=False, index=True,
+        comment="Username (unique)"
+    )
+    full_name: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True,
+        comment="User's full name"
+    )
     
     # Authentication
-    hashed_password = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_verified = Column(Boolean, default=False, nullable=False)
-    is_superuser = Column(Boolean, default=False, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(
+        String(255), nullable=False,
+        comment="Bcrypt hashed password"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False,
+        comment="Whether user account is active"
+    )
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False,
+        comment="Whether user email is verified"
+    )
+    is_superuser: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False,
+        comment="Whether user has admin privileges"
+    )
     
-    # Profile
-    avatar_url = Column(String(500), nullable=True)
-    timezone = Column(String(50), default="UTC", nullable=False)
-    preferences = Column(JSON, nullable=True, comment="User preferences and settings")
+    # Profile information
+    avatar_url: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True,
+        comment="URL to user avatar image"
+    )
+    timezone: Mapped[str] = mapped_column(
+        String(50), default="UTC", nullable=False,
+        comment="User's timezone preference"
+    )
+    preferences: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=True,
+        comment="User preferences and settings (JSON)"
+    )
     
-    # Tracking
-    last_login_at = Column(DateTime(timezone=True), nullable=True)
-    login_count = Column(Integer, default=0, nullable=False)
+    # Activity tracking
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="Last login timestamp"
+    )
+    login_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False,
+        comment="Total number of logins"
+    )
     
     # Relationships
-    datasets = relationship("Dataset", back_populates="owner", cascade="all, delete-orphan")
-    analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
+    datasets: Mapped[List["Dataset"]] = relationship(
+        "Dataset", back_populates="owner", cascade="all, delete-orphan"
+    )
+    analyses: Mapped[List["Analysis"]] = relationship(
+        "Analysis", back_populates="user", cascade="all, delete-orphan"
+    )
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('ix_user_email_active', 'email', 'is_active'),
+        Index('ix_user_created_at', 'created_at'),
+    )
+
 
 class Dataset(BaseModel):
-    """Uploaded datasets and metadata."""
+    """
+    Uploaded datasets and metadata.
+    
+    Stores information about user-uploaded datasets including
+    file metadata, data characteristics, and processing status.
+    """
     
     __tablename__ = "datasets"
     
     # Dataset identification
-    name = Column(String(255), nullable=False, index=True)
-    original_filename = Column(String(500), nullable=False)
-    description = Column(Text, nullable=True)
-    tags = Column(JSON, nullable=True, comment="Array of tags")
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False, index=True,
+        comment="Dataset display name"
+    )
+    original_filename: Mapped[str] = mapped_column(
+        String(500), nullable=False,
+        comment="Original uploaded filename"
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Dataset description"
+    )
+    tags: Mapped[Optional[List[str]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Dataset tags (JSON array)"
+    )
     
     # File information
-    file_path = Column(String(1000), nullable=False)
-    file_size = Column(Integer, nullable=False, comment="File size in bytes")
-    content_type = Column(String(100), nullable=False)
-    file_hash = Column(String(64), nullable=True, comment="SHA256 hash for integrity")
+    file_path: Mapped[str] = mapped_column(
+        String(1000), nullable=False,
+        comment="Relative path to stored file"
+    )
+    file_size: Mapped[int] = mapped_column(
+        Integer, nullable=False,
+        comment="File size in bytes"
+    )
+    content_type: Mapped[str] = mapped_column(
+        String(100), nullable=False,
+        comment="MIME type of uploaded file"
+    )
+    file_hash: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, unique=True,
+        comment="SHA256 hash for integrity checking"
+    )
     
     # Data characteristics
-    num_rows = Column(Integer, nullable=True)
-    num_columns = Column(Integer, nullable=True)
-    column_names = Column(JSON, nullable=True, comment="Array of column names")
-    column_types = Column(JSON, nullable=True, comment="Column name to type mapping")
+    num_rows: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Number of rows in dataset"
+    )
+    num_columns: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Number of columns in dataset"
+    )
+    column_names: Mapped[Optional[List[str]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Column names (JSON array)"
+    )
+    column_types: Mapped[Optional[Dict[str, str]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Column name to data type mapping (JSON object)"
+    )
+    sample_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Sample rows for preview (JSON)"
+    )
     
     # Processing status
-    status = Column(String(20), default="uploaded", nullable=False, index=True)
-    processing_error = Column(Text, nullable=True)
+    status: Mapped[DatasetStatus] = mapped_column(
+        String(20), default=DatasetStatus.UPLOADED, nullable=False, index=True,
+        comment="Processing status"
+    )
+    processing_error: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Error message if processing failed"
+    )
+    processed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="When processing completed"
+    )
     
-    # Data quality
-    missing_values_count = Column(Integer, nullable=True)
-    duplicate_rows_count = Column(Integer, nullable=True)
-    data_quality_score = Column(Float, nullable=True)
+    # Data quality metrics
+    missing_values_count: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Total missing values across all columns"
+    )
+    duplicate_rows_count: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Number of duplicate rows"
+    )
+    data_quality_score: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Overall data quality score (0.0-1.0)"
+    )
+    data_profile: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Detailed data profiling results (JSON)"
+    )
     
     # Relationships
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    owner = relationship("User", back_populates="datasets")
-    analyses = relationship("Analysis", back_populates="dataset", cascade="all, delete-orphan")
+    owner_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), 
+        nullable=False, index=True
+    )
+    owner: Mapped["User"] = relationship("User", back_populates="datasets")
+    analyses: Mapped[List["Analysis"]] = relationship(
+        "Analysis", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('ix_dataset_owner_status', 'owner_id', 'status'),
+        Index('ix_dataset_created_at', 'created_at'),
+        Index('ix_dataset_file_hash', 'file_hash'),
+    )
+    
+    def generate_file_hash(self, file_content: bytes) -> str:
+        """Generate SHA256 hash of file content."""
+        return hashlib.sha256(file_content).hexdigest()
+
 
 class Analysis(BaseModel):
-    """ML analysis configurations and results."""
+    """
+    ML analysis configurations and results.
+    
+    Stores complete information about ML analysis runs including
+    configuration, execution details, and results.
+    """
     
     __tablename__ = "analyses"
     
     # Analysis identification
-    analysis_id = Column(String(50), unique=True, nullable=False, index=True)
-    name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
+    analysis_id: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, index=True,
+        comment="Unique analysis identifier (UUID)"
+    )
+    name: Mapped[str] = mapped_column(
+        String(255), nullable=False,
+        comment="Analysis display name"
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Analysis description"
+    )
     
-    # Configuration
-    task_type = Column(String(50), nullable=False, index=True)  # classification, regression, etc.
-    target_column = Column(String(255), nullable=False)
-    feature_columns = Column(JSON, nullable=True)
-    algorithms = Column(JSON, nullable=True, comment="Array of algorithm names")
+    # ML Configuration
+    task_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True,
+        comment="ML task type (classification, regression, etc.)"
+    )
+    target_column: Mapped[str] = mapped_column(
+        String(255), nullable=False,
+        comment="Target column name for prediction"
+    )
+    feature_columns: Mapped[Optional[List[str]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Selected feature columns (JSON array)"
+    )
+    algorithms: Mapped[Optional[List[str]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Selected ML algorithms (JSON array)"
+    )
     
     # Execution settings
-    execution_mode = Column(String(20), default="local_cpu", nullable=False)
-    max_training_time = Column(Integer, nullable=True, comment="Max time in seconds")
-    test_size = Column(Float, default=0.2, nullable=False)
-    random_state = Column(Integer, nullable=True)
+    execution_mode: Mapped[ExecutionMode] = mapped_column(
+        String(20), default=ExecutionMode.LOCAL_CPU, nullable=False,
+        comment="Execution environment"
+    )
+    max_training_time: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Maximum training time in seconds"
+    )
+    test_size: Mapped[float] = mapped_column(
+        Float, default=0.2, nullable=False,
+        comment="Train/test split ratio"
+    )
+    validation_size: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Validation set size ratio"
+    )
+    random_state: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        comment="Random seed for reproducibility"
+    )
+    
+    # Advanced settings
+    hyperparameter_tuning: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False,
+        comment="Whether to perform hyperparameter tuning"
+    )
+    cross_validation_folds: Mapped[int] = mapped_column(
+        Integer, default=5, nullable=False,
+        comment="Number of cross-validation folds"
+    )
+    feature_selection: Mapped[bool] = mapped_column(
+        Boolean, default=True, nullable=False,
+        comment="Whether to perform feature selection"
+    )
     
     # Status and progress
-    status = Column(String(20), default="pending", nullable=False, index=True)
-    progress = Column(Float, default=0.0, nullable=False)
-    error_message = Column(Text, nullable=True)
+    status: Mapped[AnalysisStatus] = mapped_column(
+        String(20), default=AnalysisStatus.PENDING, nullable=False, index=True,
+        comment="Analysis execution status"
+    )
+    progress: Mapped[float] = mapped_column(
+        Float, default=0.0, nullable=False,
+        comment="Execution progress (0.0-1.0)"
+    )
+    error_message: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Error message if analysis failed"
+    )
     
     # Results
-    best_model_name = Column(String(100), nullable=True)
-    best_model_score = Column(Float, nullable=True)
-    performance_metrics = Column(JSON, nullable=True)
-    feature_importance = Column(JSON, nullable=True)
-    model_comparison = Column(JSON, nullable=True)
+    best_model_name: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True,
+        comment="Name of the best performing model"
+    )
+    best_model_score: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Best model's primary metric score"
+    )
+    performance_metrics: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Detailed performance metrics (JSON)"
+    )
+    feature_importance: Mapped[Optional[Dict[str, float]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Feature importance scores (JSON)"
+    )
+    model_comparison: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Comparison of all models (JSON array)"
+    )
+    predictions: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=True,
+        comment="Sample predictions and probabilities (JSON)"
+    )
     
     # Execution tracking
-    started_at = Column(DateTime(timezone=True), nullable=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    execution_time = Column(Float, nullable=True, comment="Execution time in seconds")
+    started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="Analysis start timestamp"
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="Analysis completion timestamp"
+    )
+    execution_time: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Total execution time in seconds"
+    )
+    
+    # Resource usage
+    memory_usage_mb: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Peak memory usage in MB"
+    )
+    cpu_time_seconds: Mapped[Optional[float]] = mapped_column(
+        Float, nullable=True,
+        comment="Total CPU time in seconds"
+    )
     
     # Relationships
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    dataset_id = Column(Integer, ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), 
+        nullable=False, index=True
+    )
+    dataset_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("datasets.id", ondelete="CASCADE"), 
+        nullable=False, index=True
+    )
     
-    user = relationship("User", back_populates="analyses")
-    dataset = relationship("Dataset", back_populates="analyses")
-
-# Database engine creation
-def create_database_engine() -> Engine:
-    """Create and configure the database engine."""
-    engine_kwargs = {
-        "echo": db_config.DEBUG,
-        "future": True,  # Use SQLAlchemy 2.0 style
-        "pool_pre_ping": True,  # Validate connections
-        "pool_recycle": db_config.POOL_RECYCLE,
-    }
+    user: Mapped["User"] = relationship("User", back_populates="analyses")
+    dataset: Mapped["Dataset"] = relationship("Dataset", back_populates="analyses")
     
-    # PostgreSQL-specific configuration
-    if "postgresql" in db_config.DATABASE_URL:
-        engine_kwargs.update({
-            "poolclass": QueuePool,
-            "pool_size": db_config.POOL_SIZE,
-            "max_overflow": db_config.MAX_OVERFLOW,
-            "pool_timeout": db_config.POOL_TIMEOUT,
-        })
-    else:
-        # SQLite fallback for development
-        engine_kwargs.update({
-            "poolclass": pool.NullPool,
-            "connect_args": {"check_same_thread": False}
-        })
-    
-    try:
-        engine = create_engine(db_config.DATABASE_URL, **engine_kwargs)
-        logger.info("✅ Database engine created successfully")
-        return engine
-    except Exception as e:
-        logger.error(f"❌ Failed to create database engine: {e}")
-        raise
-
-def create_session_factory(engine: Engine) -> sessionmaker:
-    """Create session factory with proper configuration."""
-    return sessionmaker(
-        bind=engine,
-        autocommit=False,
-        autoflush=False,
-        expire_on_commit=False
+    # Indexes for performance
+    __table_args__ = (
+        Index('ix_analysis_user_status', 'user_id', 'status'),
+        Index('ix_analysis_dataset_id', 'dataset_id'),
+        Index('ix_analysis_task_type', 'task_type'),
+        Index('ix_analysis_created_at', 'created_at'),
+        Index('ix_analysis_completed_at', 'completed_at'),
     )
 
-async def init_database() -> None:
-    """Initialize database engine and session factory."""
-    global engine, SessionLocal
+
+# =============================================================================
+# DATABASE ENGINE & SESSION MANAGEMENT
+# =============================================================================
+
+class DatabaseManager:
+    """
+    Centralized database connection and session management.
     
-    try:
-        engine = create_database_engine()
-        SessionLocal = create_session_factory(engine)
-        logger.info("✅ Database initialized successfully")
-    except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
-        raise
+    Handles both sync and async database operations with proper
+    connection pooling, error handling, and health monitoring.
+    """
+    
+    def __init__(self):
+        self.config = get_database_config()
+        self._sync_engine: Optional[Engine] = None
+        self._async_engine: Optional[AsyncEngine] = None
+        self._sync_session_factory: Optional[sessionmaker] = None
+        self._async_session_factory: Optional[async_sessionmaker] = None
+        self._initialized = False
+    
+    def _create_sync_engine(self) -> Engine:
+        """Create synchronous database engine."""
+        engine_kwargs = {
+            "echo": self.config["echo"],
+            "future": True,  # Use SQLAlchemy 2.0 style
+            "pool_pre_ping": True,  # Validate connections before use
+            "pool_recycle": self.config["pool_recycle"],
+        }
+        
+        # Database-specific configuration
+        if "postgresql" in self.config["database_url"]:
+            engine_kwargs.update({
+                "poolclass": QueuePool,
+                "pool_size": self.config["pool_size"],
+                "max_overflow": self.config["max_overflow"],
+                "pool_timeout": self.config["pool_timeout"],
+            })
+        elif "sqlite" in self.config["database_url"]:
+            engine_kwargs.update({
+                "poolclass": NullPool,
+                "connect_args": {"check_same_thread": False}
+            })
+        
+        return create_engine(self.config["database_url"], **engine_kwargs)
+    
+    def _create_async_engine(self) -> AsyncEngine:
+        """Create asynchronous database engine."""
+        engine_kwargs = {
+            "echo": self.config["echo"],
+            "future": True,
+            "pool_pre_ping": True,
+            "pool_recycle": self.config["pool_recycle"],
+        }
+        
+        # Only PostgreSQL supports async with asyncpg
+        if "postgresql" in self.config["async_database_url"]:
+            engine_kwargs.update({
+                "poolclass": QueuePool,
+                "pool_size": self.config["pool_size"],
+                "max_overflow": self.config["max_overflow"],
+                "pool_timeout": self.config["pool_timeout"],
+            })
+        
+        return create_async_engine(self.config["async_database_url"], **engine_kwargs)
+    
+    def initialize(self) -> None:
+        """Initialize database engines and session factories."""
+        try:
+            # Create engines
+            self._sync_engine = self._create_sync_engine()
+            
+            # Only create async engine for PostgreSQL
+            if "postgresql" in self.config["database_url"]:
+                self._async_engine = self._create_async_engine()
+            
+            # Create session factories
+            self._sync_session_factory = sessionmaker(
+                bind=self._sync_engine,
+                class_=Session,
+                autoflush=False,
+                autocommit=False,
+                expire_on_commit=False
+            )
+            
+            if self._async_engine:
+                self._async_session_factory = async_sessionmaker(
+                    bind=self._async_engine,
+                    class_=AsyncSession,
+                    autoflush=False,
+                    autocommit=False,
+                    expire_on_commit=False
+                )
+            
+            self._initialized = True
+            logger.info("✅ Database manager initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Database initialization failed: {e}")
+            raise
+    
+    def create_tables(self) -> None:
+        """Create all database tables."""
+        if not self._initialized or not self._sync_engine:
+            raise RuntimeError("Database not initialized")
+        
+        try:
+            Base.metadata.create_all(bind=self._sync_engine)
+            logger.info("✅ Database tables created successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to create database tables: {e}")
+            raise
+    
+    def get_sync_session(self) -> Generator[Session, None, None]:
+        """Get synchronous database session (FastAPI dependency)."""
+        if not self._sync_session_factory:
+            raise RuntimeError("Sync session factory not initialized")
+        
+        session = self._sync_session_factory()
+        try:
+            yield session
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Database session error: {e}")
+            raise
+        finally:
+            session.close()
+    
+    @asynccontextmanager
+    async def get_async_session(self) -> AsyncGenerator[AsyncSession, None]:
+        """Get asynchronous database session (async context manager)."""
+        if not self._async_session_factory:
+            raise RuntimeError("Async session factory not initialized")
+        
+        async with self._async_session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"Async database session error: {e}")
+                raise
+    
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform comprehensive database health check."""
+        try:
+            start_time = datetime.now(timezone.utc)
+            
+            # Test sync connection
+            with self._sync_session_factory() as session:
+                result = session.execute(text("SELECT 1 as healthcheck"))
+                sync_result = result.scalar()
+            
+            # Test async connection if available
+            async_result = None
+            if self._async_session_factory:
+                async with self._async_session_factory() as session:
+                    result = await session.execute(text("SELECT 1 as healthcheck"))
+                    async_result = result.scalar()
+            
+            end_time = datetime.now(timezone.utc)
+            response_time = (end_time - start_time).total_seconds() * 1000
+            
+            return {
+                "status": "healthy",
+                "message": "Database connections successful",
+                "sync_connection": sync_result == 1,
+                "async_connection": async_result == 1 if async_result is not None else "N/A",
+                "response_time_ms": round(response_time, 2),
+                "database_type": self.config["database_url"].split("://")[0],
+                "timestamp": end_time.isoformat()
+            }
+            
+        except Exception as e:
+            return {
+                "status": "unhealthy",
+                "message": "Database connection failed",
+                "error": str(e),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+    
+    def close(self) -> None:
+        """Close database connections."""
+        if self._sync_engine:
+            self._sync_engine.dispose()
+        if self._async_engine:
+            asyncio.create_task(self._async_engine.dispose())
+        
+        logger.info("✅ Database connections closed")
+
+
+# =============================================================================
+# GLOBAL DATABASE MANAGER
+# =============================================================================
+
+# Global database manager instance
+db_manager = DatabaseManager()
+
+
+# =============================================================================
+# CONVENIENCE FUNCTIONS
+# =============================================================================
+
+def init_database() -> None:
+    """Initialize database (convenience function)."""
+    db_manager.initialize()
+
 
 def create_tables() -> None:
-    """Create all database tables."""
-    if engine is None:
-        raise RuntimeError("Database engine not initialized. Call init_database() first.")
-    
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("✅ Database tables created successfully")
-    except Exception as e:
-        logger.error(f"❌ Failed to create database tables: {e}")
-        raise
+    """Create all tables (convenience function)."""
+    db_manager.create_tables()
+
 
 def get_db() -> Generator[Session, None, None]:
     """FastAPI dependency for database sessions."""
-    if SessionLocal is None:
-        raise RuntimeError("Database not initialized. Call init_database() first.")
-    
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+    yield from db_manager.get_sync_session()
 
-@asynccontextmanager
-async def get_db_session():
+
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for database sessions."""
-    if SessionLocal is None:
-        raise RuntimeError("Database not initialized. Call init_database() first.")
-    
-    session = SessionLocal()
-    try:
+    async with db_manager.get_async_session() as session:
         yield session
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Database session error: {e}")
-        raise
-    finally:
-        session.close()
 
-def health_check() -> Dict[str, Any]:
-    """Perform database health check."""
-    try:
-        with get_db_session() as db:
-            # Simple query to test connection
-            result = db.execute("SELECT 1 as healthcheck")
-            row = result.fetchone()
-            
-            if row and row[0] == 1:
-                return {
-                    "status": "healthy",
-                    "message": "Database connected",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-            else:
-                return {
-                    "status": "unhealthy", 
-                    "message": "Database query failed",
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "message": "Database connection failed", 
-            "error": str(e),
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
 
-# Export main components
+async def health_check() -> Dict[str, Any]:
+    """Database health check (convenience function)."""
+    return await db_manager.health_check()
+
+
+# =============================================================================
+# DATABASE EVENTS & HOOKS
+# =============================================================================
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    """Set SQLite pragmas for better performance and integrity."""
+    if "sqlite" in str(dbapi_connection):
+        cursor = dbapi_connection.cursor()
+        # Enable foreign key constraints
+        cursor.execute("PRAGMA foreign_keys=ON")
+        # Enable WAL mode for better concurrency
+        cursor.execute("PRAGMA journal_mode=WAL")
+        # Set synchronous mode for better performance
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
+
+
+@event.listens_for(User.hashed_password, 'set')
+def validate_password_hash(target, value, oldvalue, initiator):
+    """Validate that password is properly hashed."""
+    if value and not value.startswith(('$2b$', '$2a$', '$2y$')):
+        logger.warning("Password does not appear to be bcrypt hashed")
+
+
+# =============================================================================
+# EXPORTS
+# =============================================================================
+
 __all__ = [
-    "Base", "BaseModel", "User", "Dataset", "Analysis",
-    "engine", "SessionLocal", "get_db", "get_db_session",
-    "init_database", "create_tables", "health_check"
+    # Base classes
+    "Base", "BaseModel",
+    
+    # Models
+    "User", "Dataset", "Analysis",
+    
+    # Enums
+    "DatabaseType", "AnalysisStatus", "DatasetStatus", "ExecutionMode",
+    
+    # Database management
+    "DatabaseManager", "db_manager",
+    
+    # Convenience functions
+    "init_database", "create_tables", "get_db", "get_async_db", "health_check",
+    
+    # Configuration
+    "get_database_config",
 ]
