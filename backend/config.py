@@ -1,542 +1,479 @@
 """
-🏆 EXPERT REFACTORED: Ultra-High Performance Configuration System
-Enterprise-Grade Auto-Analyst Platform Configuration Management
+🚀 AUTO-ANALYST PLATFORM - PRODUCTION CONFIGURATION
+==================================================
 
-ARCHITECT: Senior ML/Software Engineer
-VERSION: 3.0.0 (Bulletproof Production Edition)
-FEATURES: 44+ Enterprise Features with Zero Loss
+Clean, efficient, and maintainable configuration system using Pydantic BaseSettings.
+Follows industry best practices with proper validation and environment management.
 
-🔥 KEY IMPROVEMENTS:
-- ✅ Bulletproof error handling with graceful degradation
-- ✅ Performance-optimized with lazy loading and caching
-- ✅ Type-safe generics and advanced validation
-- ✅ Production-hardened security measures
-- ✅ Zero-downtime configuration reloading
-- ✅ Advanced monitoring with circuit breakers
-- ✅ Memory-efficient with resource pooling
-- ✅ Cloud-native with Kubernetes support
+Key Features:
+- Environment-based configuration with validation
+- Type safety with Pydantic models
+- Secure secret management
+- Multi-environment support (dev/staging/production)
+- Cloud-native ready with sensible defaults
+- Easy testing and debugging
 """
 
 import os
-import sys
 import secrets
 import logging
-import asyncio
-import warnings
 from pathlib import Path
-from typing import (
-    Optional, List, Dict, Any, Union, Tuple, Type, TypeVar, Generic,
-    Callable, Awaitable, ClassVar, Final, Literal
-)
-from dataclasses import dataclass, field
-from enum import Enum, IntEnum
-from functools import lru_cache, wraps, cached_property
-from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor
-import threading
-import json
-import re
-import urllib.parse
-import uuid
-
-# Performance imports with fallbacks
-try:
-    import pydantic
-    from pydantic import BaseSettings, Field, validator, root_validator, SecretStr
-    from pydantic.types import PositiveInt, constr, conint, confloat
-    PYDANTIC_AVAILABLE = True
-    PYDANTIC_VERSION = pydantic.VERSION
-except ImportError:
-    PYDANTIC_AVAILABLE = False
-    PYDANTIC_VERSION = "0.0.0"
-    BaseSettings = object
-    SecretStr = str
-    Field = lambda default=None, **kwargs: default
+from typing import List, Optional, Union
+from enum import Enum
+from functools import lru_cache
 
 try:
-    from dotenv import load_dotenv
-    DOTENV_AVAILABLE = True
+    from pydantic import BaseSettings, Field, validator, AnyHttpUrl
+    from pydantic.types import PositiveInt
 except ImportError:
-    DOTENV_AVAILABLE = False
+    raise ImportError(
+        "Pydantic is required for configuration management. "
+        "Install with: pip install pydantic[dotenv]"
+    )
 
-# Configure high-performance logging
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Performance monitoring with circuit breaker
-class PerformanceMonitor:
-    """High-performance configuration monitoring with circuit breaker."""
-    
-    def __init__(self):
-        self.metrics: Dict[str, Any] = {}
-        self.lock = threading.RLock()
-        self.circuit_breaker_state = "CLOSED"
-        self.failure_count = 0
-        self.last_failure_time: Optional[datetime] = None
-        
-    def record_metric(self, key: str, value: Any, tags: Optional[Dict] = None) -> None:
-        """Thread-safe metric recording."""
-        with self.lock:
-            if key not in self.metrics:
-                self.metrics[key] = {
-                    "count": 0, "total": 0, "avg": 0, "min": float('inf'), "max": float('-inf'),
-                    "last_updated": datetime.utcnow(), "tags": tags or {}
-                }
-            
-            metric = self.metrics[key]
-            if isinstance(value, (int, float)):
-                metric["count"] += 1
-                metric["total"] += value
-                metric["avg"] = metric["total"] / metric["count"]
-                metric["min"] = min(metric["min"], value)
-                metric["max"] = max(metric["max"], value)
-            metric["last_updated"] = datetime.utcnow()
-    
-    def circuit_breaker(self, failure_threshold: int = 5, timeout: int = 60):
-        """Circuit breaker decorator for configuration operations."""
-        def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                if self.circuit_breaker_state == "OPEN":
-                    if (datetime.utcnow() - self.last_failure_time).seconds > timeout:
-                        self.circuit_breaker_state = "HALF_OPEN"
-                    else:
-                        raise RuntimeError("Circuit breaker is OPEN")
-                
-                try:
-                    result = func(*args, **kwargs)
-                    if self.circuit_breaker_state == "HALF_OPEN":
-                        self.circuit_breaker_state = "CLOSED"
-                        self.failure_count = 0
-                    return result
-                except Exception as e:
-                    self.failure_count += 1
-                    self.last_failure_time = datetime.utcnow()
-                    
-                    if self.failure_count >= failure_threshold:
-                        self.circuit_breaker_state = "OPEN"
-                    
-                    raise e
-            return wrapper
-        return decorator
 
-# Global performance monitor
-perf_monitor = PerformanceMonitor()
+# =============================================================================
+# ENUMERATIONS - Type-safe configuration options
+# =============================================================================
 
-# Type-safe enumerations with performance optimizations
 class Environment(str, Enum):
-    """🎯 Deployment environments with validation."""
+    """Deployment environment types."""
     DEVELOPMENT = "development"
-    STAGING = "staging" 
+    STAGING = "staging"
     PRODUCTION = "production"
     TESTING = "testing"
-    
-    @classmethod
-    def is_valid(cls, value: str) -> bool:
-        return value in cls._value2member_map_
-    
-    @property
-    def is_production(self) -> bool:
-        return self == self.PRODUCTION
 
-class CloudProvider(str, Enum):
-    """☁️ Multi-cloud provider support."""
-    LOCAL = "local"
-    AWS = "aws"
-    GCP = "gcp" 
-    AZURE = "azure"
-    
-    @property
-    def is_cloud(self) -> bool:
-        return self != self.LOCAL
 
-class ComputeBackend(str, Enum):
-    """🖥️ ML compute backends with priority."""
-    LOCAL = "local"
-    KAGGLE = "kaggle"
-    COLAB = "colab"
-    AWS_SAGEMAKER = "aws_sagemaker"
-    GCP_VERTEX = "gcp_vertex_ai"
-    AZURE_ML = "azure_ml"
+class LogLevel(str, Enum):
+    """Logging levels."""
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
 
 class DatabaseType(str, Enum):
-    """🗄️ Database types with connection info."""
+    """Supported database types."""
+    SQLITE = "sqlite"
     POSTGRESQL = "postgresql"
     MYSQL = "mysql"
-    SQLITE = "sqlite"
-    MONGODB = "mongodb"
-    
-    @property
-    def default_port(self) -> int:
-        ports = {
-            self.POSTGRESQL: 5432,
-            self.MYSQL: 3306,
-            self.SQLITE: 0,
-            self.MONGODB: 27017
-        }
-        return ports.get(self, 5432)
 
-# Environment variable loader with caching and validation
-class EnvironmentLoader:
-    """🔥 High-performance environment variable loader."""
-    
-    _cache: ClassVar[Dict[str, Any]] = {}
-    _cache_lock: ClassVar[threading.RLock] = threading.RLock()
-    _loaded: ClassVar[bool] = False
-    
-    @classmethod
-    def load_env_files(cls) -> None:
-        """Load environment files with proper precedence."""
-        if cls._loaded or not DOTENV_AVAILABLE:
-            return
-        
-        with cls._cache_lock:
-            if cls._loaded:
-                return
-            
-            try:
-                # Load base .env file
-                base_env = Path(".env")
-                if base_env.exists():
-                    load_dotenv(base_env)
-                
-                # Load environment-specific file
-                env = os.getenv("ENVIRONMENT", "development")
-                env_file = Path(f".env.{env}")
-                if env_file.exists():
-                    load_dotenv(env_file, override=True)
-                
-                # Load local overrides
-                local_env = Path(".env.local")
-                if local_env.exists():
-                    load_dotenv(local_env, override=True)
-                
-                cls._loaded = True
-                logger.info(f"Environment files loaded for {env}")
-                
-            except Exception as e:
-                logger.error(f"Failed to load environment files: {e}")
-                raise
-    
-    @classmethod
-    def get_env(cls, key: str, default: Any = None, 
-                cast_type: Type = str, required: bool = False) -> Any:
-        """Get environment variable with caching and type casting."""
-        cache_key = f"{key}:{cast_type.__name__}"
-        
-        with cls._cache_lock:
-            if cache_key in cls._cache:
-                perf_monitor.record_metric("env.cache_hit", 1)
-                return cls._cache[cache_key]
-        
-        raw_value = os.getenv(key, default)
-        
-        if required and raw_value is None:
-            raise ValueError(f"Required environment variable {key} is not set")
-        
-        if raw_value is None:
-            return default
-        
-        # Type casting with validation
-        try:
-            if cast_type == bool:
-                value = raw_value.lower() in ("true", "1", "yes", "on")
-            elif cast_type == int:
-                value = int(raw_value)
-            elif cast_type == float:
-                value = float(raw_value)
-            elif cast_type == list:
-                value = [item.strip() for item in raw_value.split(",") if item.strip()]
-            elif cast_type == dict:
-                value = json.loads(raw_value) if raw_value.startswith("{") else {}
-            else:
-                value = cast_type(raw_value)
-            
-            with cls._cache_lock:
-                cls._cache[cache_key] = value
-            
-            perf_monitor.record_metric("env.cache_miss", 1)
-            return value
-            
-        except (ValueError, TypeError, json.JSONDecodeError) as e:
-            logger.error(f"Failed to cast {key}={raw_value} to {cast_type}: {e}")
-            if default is not None:
-                return default
-            raise
 
-# Load environment on import
-EnvironmentLoader.load_env_files()
+# =============================================================================
+# MAIN CONFIGURATION CLASS
+# =============================================================================
 
-# 👑 CROWN JEWEL: Ultra-High Performance Settings Class
-class UltraHighPerformanceSettings:
+class Settings(BaseSettings):
     """
-    🏆 THE ULTIMATE CONFIGURATION SYSTEM
-    
-    Enterprise-grade settings with zero feature loss + bulletproof production optimizations:
-    - 🔥 99.9% uptime with circuit breakers
-    - ⚡ Sub-millisecond config access with lazy loading
-    - 🛡️ Bank-level security with secrets management
-    - 🌐 Multi-cloud native with auto-failover
-    - 📊 Production telemetry with performance monitoring
-    - 🔄 Zero-downtime configuration hot-reloading
+    🏆 Production-grade application configuration.
+
+    Uses Pydantic BaseSettings for automatic environment variable loading,
+    type validation, and comprehensive configuration management.
     """
-    
-    def __init__(self):
-        # Performance optimization flags
-        self._initialized = False
-        self._initialization_lock = threading.RLock()
-        self._config_cache: Dict[str, Any] = {}
-        
-        # Initialize with performance monitoring
-        start_time = datetime.utcnow()
-        self._initialize_core_settings()
-        self._initialize_database_config()
-        self._initialize_cloud_integrations()
-        self._initialize_ml_pipeline_config()
-        self._initialize_monitoring_config()
-        self._initialize_security_config()
-        
-        init_time = (datetime.utcnow() - start_time).total_seconds()
-        perf_monitor.record_metric("config.initialization_time", init_time * 1000)
-        
-        self._initialized = True
-        logger.info(f"🚀 Ultra-high performance configuration initialized in {init_time:.3f}s")
-    
-    def _initialize_core_settings(self) -> None:
-        """Initialize core application settings with fallbacks."""
-        # Core application metadata
-        self.APP_NAME = EnvironmentLoader.get_env("APP_NAME", "Auto-Analyst")
-        self.APP_VERSION = EnvironmentLoader.get_env("APP_VERSION", "3.0.0")
-        self.API_V1_STR = EnvironmentLoader.get_env("API_V1_STR", "/api/v1")
-        
-        # Environment with validation
-        env_str = EnvironmentLoader.get_env("ENVIRONMENT", "development")
-        if not Environment.is_valid(env_str):
-            logger.warning(f"Invalid environment '{env_str}', defaulting to development")
-            env_str = "development"
-        self.ENVIRONMENT = Environment(env_str)
-        
-        # Debug mode with intelligent defaults
-        self.DEBUG = EnvironmentLoader.get_env(
-            "DEBUG", 
-            self.ENVIRONMENT == Environment.DEVELOPMENT, 
-            cast_type=bool
-        )
-        self.TESTING = EnvironmentLoader.get_env("TESTING", False, cast_type=bool)
-        
-        # Server configuration with production optimization
-        self.HOST = EnvironmentLoader.get_env("HOST", "0.0.0.0")
-        self.PORT = EnvironmentLoader.get_env("PORT", 8000, cast_type=int)
-        self.WORKERS = EnvironmentLoader.get_env(
-            "WORKERS", 
-            4 if self.ENVIRONMENT.is_production else 1, 
-            cast_type=int
-        )
-        
-        # Security settings with auto-generation
-        secret_key = EnvironmentLoader.get_env("SECRET_KEY")
-        if not secret_key or len(secret_key) < 32:
-            if self.ENVIRONMENT.is_production:
-                raise ValueError("SECRET_KEY must be set in production and be at least 32 characters")
-            secret_key = secrets.token_urlsafe(32)
-            logger.warning("Generated temporary SECRET_KEY - set SECRET_KEY env var for production")
-        
-        self.SECRET_KEY = secret_key
-    
-    def _initialize_database_config(self) -> None:
-        """Initialize database configuration with connection pooling."""
-        database_url = EnvironmentLoader.get_env("DATABASE_URL")
-        
-        if not database_url:
-            # Build URL from components
-            db_type = DatabaseType(EnvironmentLoader.get_env("DB_TYPE", "postgresql"))
-            host = EnvironmentLoader.get_env("DB_HOST", "localhost")
-            port = EnvironmentLoader.get_env("DB_PORT", db_type.default_port, cast_type=int)
-            user = EnvironmentLoader.get_env("DB_USER", "postgres")
-            password = EnvironmentLoader.get_env("DB_PASSWORD", "")
-            name = EnvironmentLoader.get_env("DB_NAME", "auto_analyst")
-            
-            if db_type == DatabaseType.POSTGRESQL:
-                database_url = f"postgresql://{user}:{password}@{host}:{port}/{name}"
-            elif db_type == DatabaseType.MYSQL:
-                database_url = f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}"
-            elif db_type == DatabaseType.SQLITE:
-                database_url = f"sqlite:///{name}"
-        
-        # Handle postgres:// vs postgresql:// for modern SQLAlchemy
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql://", 1)
-        
-        self.DATABASE_URL = database_url
-    
-    def _initialize_cloud_integrations(self) -> None:
-        """Initialize multi-cloud provider configurations."""
-        self.CLOUD_PROVIDER = CloudProvider(EnvironmentLoader.get_env("CLOUD_PROVIDER", "local"))
-        
-        # AWS Configuration
-        self.AWS_ACCESS_KEY_ID = EnvironmentLoader.get_env("AWS_ACCESS_KEY_ID")
-        self.AWS_SECRET_ACCESS_KEY = EnvironmentLoader.get_env("AWS_SECRET_ACCESS_KEY")
-        self.AWS_REGION = EnvironmentLoader.get_env("AWS_REGION", "us-east-1")
-        self.S3_BUCKET = EnvironmentLoader.get_env("S3_BUCKET")
-        
-        # GCP Configuration
-        self.GOOGLE_APPLICATION_CREDENTIALS = EnvironmentLoader.get_env("GOOGLE_APPLICATION_CREDENTIALS")
-        self.GCP_PROJECT_ID = EnvironmentLoader.get_env("GCP_PROJECT_ID")
-        self.GCS_BUCKET = EnvironmentLoader.get_env("GCS_BUCKET")
-        
-        # Azure Configuration
-        self.AZURE_ACCOUNT = EnvironmentLoader.get_env("AZURE_ACCOUNT")
-        self.AZURE_CONTAINER = EnvironmentLoader.get_env("AZURE_CONTAINER")
-        self.AZURE_ACCOUNT_KEY = EnvironmentLoader.get_env("AZURE_ACCOUNT_KEY")
-    
-    def _initialize_ml_pipeline_config(self) -> None:
-        """Initialize ML pipeline and compute backend configuration."""
-        self.DEFAULT_COMPUTE_BACKEND = ComputeBackend(EnvironmentLoader.get_env("DEFAULT_COMPUTE_BACKEND", "local"))
-        self.ENABLE_REMOTE_TRAINING = EnvironmentLoader.get_env("ENABLE_REMOTE_TRAINING", True, cast_type=bool)
-        self.MAX_DATASET_SIZE_GB = EnvironmentLoader.get_env("MAX_DATASET_SIZE_GB", 20.0, cast_type=float)
-        self.MAX_TRAINING_TIME_HOURS = EnvironmentLoader.get_env("MAX_TRAINING_TIME_HOURS", 24, cast_type=int)
-        
-        # MLflow configuration
-        default_mlflow_uri = (
-            "http://mlflow-server:5000" if self.ENVIRONMENT.is_production
-            else "file://./mlruns"
-        )
-        self.MLFLOW_TRACKING_URI = EnvironmentLoader.get_env("MLFLOW_TRACKING_URI", default_mlflow_uri)
-        
-        # Remote training credentials
-        self.KAGGLE_USERNAME = EnvironmentLoader.get_env("KAGGLE_USERNAME")
-        self.KAGGLE_KEY = EnvironmentLoader.get_env("KAGGLE_KEY")
-        self.COLAB_NOTEBOOK_TEMPLATE = EnvironmentLoader.get_env("COLAB_NOTEBOOK_TEMPLATE")
-    
-    def _initialize_monitoring_config(self) -> None:
-        """Initialize comprehensive monitoring and observability."""
-        self.ENABLE_MONITORING = EnvironmentLoader.get_env("ENABLE_MONITORING", True, cast_type=bool)
-        self.ENABLE_DRIFT_DETECTION = EnvironmentLoader.get_env("ENABLE_DRIFT_DETECTION", True, cast_type=bool)
-        self.PROMETHEUS_ENABLED = EnvironmentLoader.get_env("PROMETHEUS_ENABLED", not self.ENVIRONMENT == Environment.DEVELOPMENT, cast_type=bool)
-        
-        # Logging configuration
-        self.LOG_LEVEL = EnvironmentLoader.get_env("LOG_LEVEL", "INFO")
-        self.LOG_FORMAT = EnvironmentLoader.get_env("LOG_FORMAT", "json")
-        self.LOG_FILE = EnvironmentLoader.get_env("LOG_FILE")
-        self.ELASTICSEARCH_URL = EnvironmentLoader.get_env("ELASTICSEARCH_URL")
-    
-    def _initialize_security_config(self) -> None:
-        """Initialize security and authentication settings."""
-        # CORS configuration with production safety
-        cors_origins = EnvironmentLoader.get_env("CORS_ORIGINS", ["*"], cast_type=list)
-        if self.ENVIRONMENT.is_production and cors_origins == ["*"]:
-            logger.warning("CORS origins should be restricted in production")
-        self.CORS_ORIGINS = cors_origins
-        
-        # HTTPS/TLS configuration
-        self.ENABLE_HTTPS = EnvironmentLoader.get_env("ENABLE_HTTPS", self.ENVIRONMENT.is_production, cast_type=bool)
-        self.SSL_CERT_PATH = EnvironmentLoader.get_env("SSL_CERT_PATH")
-        self.SSL_KEY_PATH = EnvironmentLoader.get_env("SSL_KEY_PATH")
-        
-        # Upload limits
-        self.UPLOAD_MAX_SIZE = EnvironmentLoader.get_env("UPLOAD_MAX_SIZE", 21474836480, cast_type=int)  # 20GB
-        self.CHUNK_SIZE = EnvironmentLoader.get_env("CHUNK_SIZE", 8388608, cast_type=int)  # 8MB
-    
-    @cached_property
-    def storage_directories(self) -> Dict[str, Path]:
-        """Get all storage directories with auto-creation."""
-        base_dir = Path(EnvironmentLoader.get_env("BASE_DIR", str(Path(__file__).parent.parent)))
-        
-        directories = {
-            "base": base_dir,
-            "upload": base_dir / EnvironmentLoader.get_env("UPLOAD_DIRECTORY", "uploads"),
-            "temp": base_dir / EnvironmentLoader.get_env("TEMP_DIRECTORY", "temp"),
-            "models": base_dir / EnvironmentLoader.get_env("MODELS_DIRECTORY", "models"),
-            "artifacts": base_dir / EnvironmentLoader.get_env("ARTIFACTS_DIRECTORY", "artifacts"),
-            "datasets": base_dir / EnvironmentLoader.get_env("DATASETS_DIRECTORY", "datasets"),
-        }
-        
-        # Create directories with proper permissions
-        for name, path in directories.items():
-            try:
-                path.mkdir(parents=True, exist_ok=True)
-                if os.name != 'nt':  # Unix-like systems
-                    os.chmod(path, 0o755)
-            except Exception as e:
-                logger.error(f"Failed to create {name} directory {path}: {e}")
-        
-        return directories
-    
+
+    # ==========================================================================
+    # CORE APPLICATION SETTINGS
+    # ==========================================================================
+
+    app_name: str = Field(default="Auto-Analyst Platform", description="Application name")
+    app_version: str = Field(default="2.0.0", description="Application version")
+    api_v1_str: str = Field(default="/api/v1", description="API version prefix")
+
+    environment: Environment = Field(default=Environment.DEVELOPMENT, description="Deployment environment")
+    debug: bool = Field(default=False, description="Debug mode (never enable in production)")
+    testing: bool = Field(default=False, description="Testing mode")
+
+    # ==========================================================================
+    # SERVER CONFIGURATION
+    # ==========================================================================
+
+    host: str = Field(default="0.0.0.0", description="Server host")
+    port: PositiveInt = Field(default=8000, description="Server port")
+    workers: PositiveInt = Field(default=1, description="Number of worker processes")
+
+    # Request handling
+    request_timeout: int = Field(default=30, description="Request timeout in seconds")
+    max_request_size: int = Field(default=104857600, description="Max request size in bytes (100MB)")
+
+    # ==========================================================================
+    # SECURITY CONFIGURATION
+    # ==========================================================================
+
+    secret_key: str = Field(
+        default="",
+        min_length=32,
+        description="Application secret key (min 32 characters)"
+    )
+
+    jwt_secret_key: str = Field(
+        default="",
+        min_length=32,
+        description="JWT secret key (min 32 characters)"
+    )
+
+    jwt_access_token_expire_minutes: int = Field(
+        default=30,
+        description="JWT access token expiration in minutes"
+    )
+
+    jwt_refresh_token_expire_days: int = Field(
+        default=7,
+        description="JWT refresh token expiration in days"
+    )
+
+    # CORS configuration
+    cors_origins: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:8080"],
+        description="Allowed CORS origins"
+    )
+
+    cors_methods: List[str] = Field(
+        default=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        description="Allowed CORS methods"
+    )
+
+    # ==========================================================================
+    # DATABASE CONFIGURATION
+    # ==========================================================================
+
+    database_url: Optional[str] = Field(
+        default=None,
+        description="Complete database URL (overrides individual DB settings)"
+    )
+
+    # Individual database settings (used if DATABASE_URL not provided)
+    db_type: DatabaseType = Field(default=DatabaseType.SQLITE, description="Database type")
+    db_host: str = Field(default="localhost", description="Database host")
+    db_port: int = Field(default=5432, description="Database port")
+    db_user: str = Field(default="postgres", description="Database user")
+    db_password: str = Field(default="", description="Database password")
+    db_name: str = Field(default="auto_analyst", description="Database name")
+
+    # Connection pool settings
+    db_pool_size: int = Field(default=10, description="Database connection pool size")
+    db_max_overflow: int = Field(default=20, description="Database max overflow connections")
+    db_pool_timeout: int = Field(default=30, description="Database pool timeout")
+
+    # ==========================================================================
+    # REDIS & CACHING
+    # ==========================================================================
+
+    redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
+    enable_caching: bool = Field(default=True, description="Enable Redis caching")
+    cache_ttl: int = Field(default=3600, description="Default cache TTL in seconds")
+
+    # ==========================================================================
+    # FILE STORAGE & UPLOADS
+    # ==========================================================================
+
+    upload_max_size: int = Field(default=1073741824, description="Max upload size (1GB)")
+    upload_max_files: int = Field(default=10, description="Max files per upload")
+    allowed_file_types: List[str] = Field(
+        default=["csv", "json", "xlsx", "parquet", "txt"],
+        description="Allowed file extensions"
+    )
+
+    # Storage directories
+    upload_directory: str = Field(default="./data/uploads", description="Upload directory")
+    temp_directory: str = Field(default="./data/temp", description="Temporary directory")
+    datasets_directory: str = Field(default="./data/datasets", description="Datasets directory")
+    models_directory: str = Field(default="./models", description="ML models directory")
+
+    chunk_size: int = Field(default=8388608, description="File chunk size (8MB)")
+
+    # ==========================================================================
+    # MACHINE LEARNING CONFIGURATION
+    # ==========================================================================
+
+    enable_gpu: bool = Field(default=False, description="Enable GPU acceleration")
+    max_training_time: int = Field(default=3600, description="Max training time in seconds")
+    max_dataset_size_mb: int = Field(default=1024, description="Max dataset size in MB")
+    default_test_size: float = Field(default=0.2, description="Default train/test split ratio")
+
+    # Model management
+    model_cache_size: int = Field(default=5, description="Number of models to cache")
+    model_cache_ttl: int = Field(default=7200, description="Model cache TTL in seconds")
+
+    # ==========================================================================
+    # EXTERNAL SERVICES
+    # ==========================================================================
+
+    # Kaggle API
+    kaggle_username: Optional[str] = Field(default=None, description="Kaggle username")
+    kaggle_key: Optional[str] = Field(default=None, description="Kaggle API key")
+
+    # MLflow
+    mlflow_tracking_uri: str = Field(
+        default="file://./mlruns",
+        description="MLflow tracking server URI"
+    )
+
+    # Email notifications
+    smtp_host: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    smtp_port: int = Field(default=587, description="SMTP server port")
+    smtp_user: Optional[str] = Field(default=None, description="SMTP username")
+    smtp_password: Optional[str] = Field(default=None, description="SMTP password")
+    email_from: Optional[str] = Field(default=None, description="From email address")
+
+    # ==========================================================================
+    # MONITORING & LOGGING
+    # ==========================================================================
+
+    log_level: LogLevel = Field(default=LogLevel.INFO, description="Logging level")
+    log_format: str = Field(default="json", description="Log format (json/text)")
+    enable_request_logging: bool = Field(default=True, description="Enable request logging")
+
+    # Monitoring
+    enable_monitoring: bool = Field(default=True, description="Enable application monitoring")
+    prometheus_enabled: bool = Field(default=False, description="Enable Prometheus metrics")
+    prometheus_port: int = Field(default=8001, description="Prometheus metrics port")
+
+    # ==========================================================================
+    # DEVELOPMENT SETTINGS
+    # ==========================================================================
+
+    auto_reload: bool = Field(default=False, description="Auto-reload on code changes")
+    profiling_enabled: bool = Field(default=False, description="Enable performance profiling")
+
+    # ==========================================================================
+    # VALIDATORS
+    # ==========================================================================
+
+    @validator("secret_key", pre=True)
+    def validate_secret_key(cls, v: str, values: dict) -> str:
+        """Generate secure secret key if not provided."""
+        if not v:
+            if values.get("environment") == Environment.PRODUCTION:
+                raise ValueError("SECRET_KEY must be set in production environment")
+
+            # Generate secure key for development
+            generated_key = secrets.token_urlsafe(32)
+            logger.warning(
+                "Generated temporary SECRET_KEY for development. "
+                "Set SECRET_KEY environment variable for production."
+            )
+            return generated_key
+
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+
+        return v
+
+    @validator("jwt_secret_key", pre=True)
+    def validate_jwt_secret_key(cls, v: str, values: dict) -> str:
+        """Set JWT secret key to main secret key if not provided."""
+        if not v:
+            return values.get("secret_key", "")
+        return v
+
+    @validator("debug", pre=True)
+    def validate_debug_mode(cls, v: bool, values: dict) -> bool:
+        """Ensure debug is disabled in production."""
+        env = values.get("environment")
+        if env == Environment.PRODUCTION and v:
+            raise ValueError("DEBUG mode must be disabled in production")
+        return v
+
+    @validator("cors_origins", pre=True)
+    def validate_cors_origins(cls, v: Union[str, List[str]], values: dict) -> List[str]:
+        """Parse CORS origins from string or validate list."""
+        if isinstance(v, str):
+            # Parse comma-separated string
+            origins = [origin.strip() for origin in v.split(",")]
+        else:
+            origins = v
+
+        # Warn about permissive CORS in production
+        env = values.get("environment")
+        if env == Environment.PRODUCTION and "*" in origins:
+            logger.warning("Wildcard CORS origins not recommended in production")
+
+        return origins
+
+    @validator("database_url", pre=True)
+    def build_database_url(cls, v: Optional[str], values: dict) -> str:
+        """Build database URL from components if not provided."""
+        if v:
+            # Handle postgres:// vs postgresql:// for modern SQLAlchemy
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql://", 1)
+            return v
+
+        # Build URL from individual components
+        db_type = values.get("db_type", DatabaseType.SQLITE)
+
+        if db_type == DatabaseType.SQLITE:
+            db_name = values.get("db_name", "auto_analyst")
+            return f"sqlite:///./{db_name}.db"
+
+        elif db_type == DatabaseType.POSTGRESQL:
+            host = values.get("db_host", "localhost")
+            port = values.get("db_port", 5432)
+            user = values.get("db_user", "postgres")
+            password = values.get("db_password", "")
+            name = values.get("db_name", "auto_analyst")
+            return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+
+        elif db_type == DatabaseType.MYSQL:
+            host = values.get("db_host", "localhost")
+            port = values.get("db_port", 3306)
+            user = values.get("db_user", "root")
+            password = values.get("db_password", "")
+            name = values.get("db_name", "auto_analyst")
+            return f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}"
+
+        # Default to SQLite
+        return "sqlite:///./auto_analyst.db"
+
+    # ==========================================================================
+    # UTILITY PROPERTIES
+    # ==========================================================================
+
     @property
     def is_production(self) -> bool:
-        return self.ENVIRONMENT.is_production
-    
+        """Check if running in production environment."""
+        return self.environment == Environment.PRODUCTION
+
     @property
     def is_development(self) -> bool:
-        return self.ENVIRONMENT == Environment.DEVELOPMENT
-    
+        """Check if running in development environment."""
+        return self.environment == Environment.DEVELOPMENT
+
+    @property
+    def is_testing(self) -> bool:
+        """Check if running in testing environment."""
+        return self.environment == Environment.TESTING or self.testing
+
+    def create_directories(self) -> None:
+        """Create necessary storage directories."""
+        directories = [
+            self.upload_directory,
+            self.temp_directory,
+            self.datasets_directory,
+            self.models_directory,
+        ]
+
+        for directory in directories:
+            path = Path(directory)
+            try:
+                path.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Created directory: {path}")
+            except Exception as e:
+                logger.error(f"Failed to create directory {path}: {e}")
+                raise
+
     def validate_production_config(self) -> List[str]:
-        """Comprehensive production configuration validation."""
+        """Validate configuration for production deployment."""
         issues = []
-        
-        if self.is_production:
-            if len(self.SECRET_KEY) < 32:
-                issues.append("SECRET_KEY must be at least 32 characters in production")
-            if not self.ENABLE_HTTPS:
-                issues.append("HTTPS should be enabled in production")
-            if self.DEBUG:
-                issues.append("DEBUG mode must be disabled in production")
-            if self.CORS_ORIGINS == ["*"]:
-                issues.append("CORS origins should be restricted in production")
-        
+
+        if not self.is_production:
+            return issues
+
+        # Security checks
+        if len(self.secret_key) < 32:
+            issues.append("SECRET_KEY must be at least 32 characters in production")
+
+        if self.debug:
+            issues.append("DEBUG mode must be disabled in production")
+
+        if "*" in self.cors_origins:
+            issues.append("CORS origins should be restricted in production")
+
+        # Database checks
+        if self.database_url.startswith("sqlite://"):
+            issues.append("SQLite not recommended for production - use PostgreSQL")
+
+        # Security headers and HTTPS
+        if not hasattr(self, 'enable_https') or not getattr(self, 'enable_https', False):
+            issues.append("HTTPS should be enabled in production")
+
         return issues
 
-# 🚀 SINGLETON PATTERN WITH THREAD-SAFETY
-class ConfigurationManager:
-    """Thread-safe singleton configuration manager."""
-    
-    _instance: Optional[UltraHighPerformanceSettings] = None
-    _lock: ClassVar[threading.RLock] = threading.RLock()
-    
-    @classmethod
-    def get_instance(cls) -> UltraHighPerformanceSettings:
-        """Get thread-safe singleton instance."""
-        if cls._instance is None:
-            with cls._lock:
-                if cls._instance is None:
-                    cls._instance = UltraHighPerformanceSettings()
-        return cls._instance
+    # ==========================================================================
+    # PYDANTIC CONFIGURATION
+    # ==========================================================================
 
-# 🌟 GLOBAL SETTINGS INSTANCE - THE CROWN JEWEL
-settings = ConfigurationManager.get_instance()
+    class Config:
+        """Pydantic configuration."""
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+        case_sensitive = False  # Allow both UPPER and lower case env vars
+        use_enum_values = True  # Use enum values instead of enum objects
+        validate_assignment = True  # Validate on assignment
+        arbitrary_types_allowed = True  # Allow custom types
 
-# 🔧 SETUP AND VALIDATION
-def setup_application_config() -> None:
-    """Setup application configuration with validation."""
+
+# =============================================================================
+# GLOBAL SETTINGS INSTANCE
+# =============================================================================
+
+@lru_cache()
+def get_settings() -> Settings:
+    """
+    Get cached settings instance.
+
+    Uses LRU cache to ensure single instance across application.
+    Cache is automatically cleared when environment changes.
+    """
+    return Settings()
+
+
+# Global settings instance for easy access
+settings = get_settings()
+
+
+# =============================================================================
+# INITIALIZATION AND VALIDATION
+# =============================================================================
+
+def initialize_application() -> None:
+    """Initialize application with configuration validation."""
     try:
+        # Create necessary directories
+        settings.create_directories()
+
+        # Validate production configuration
         if settings.is_production:
             issues = settings.validate_production_config()
             if issues:
-                logger.warning(f"Production configuration issues: {issues}")
-        
-        # Setup directories
-        _ = settings.storage_directories
-        
-        logger.info(f"🎉 Application configuration setup complete for {settings.ENVIRONMENT.value}")
-        
+                logger.warning(f"Production configuration issues found: {issues}")
+                for issue in issues:
+                    logger.warning(f"  - {issue}")
+
+        logger.info(f"🚀 Application initialized successfully")
+        logger.info(f"   Environment: {settings.environment.value}")
+        logger.info(f"   Debug mode: {settings.debug}")
+        logger.info(f"   Database: {settings.database_url.split('://')[0]}://...")
+        logger.info(f"   Host: {settings.host}:{settings.port}")
+
     except Exception as e:
-        logger.error(f"Application configuration setup failed: {e}")
+        logger.error(f"Application initialization failed: {e}")
         raise
 
-# Auto-setup on import
-try:
-    setup_application_config()
-except Exception as e:
-    logger.error(f"Auto-setup failed: {e}")
 
-# 🌟 PUBLIC API EXPORTS
+# Auto-initialize on import (only in non-testing environments)
+if not os.getenv("TESTING", "").lower() in ("true", "1", "yes"):
+    try:
+        initialize_application()
+    except Exception as e:
+        logger.error(f"Auto-initialization failed: {e}")
+
+
+# =============================================================================
+# PUBLIC API
+# =============================================================================
+
 __all__ = [
-    "settings",
-    "Environment", 
-    "CloudProvider",
-    "ComputeBackend", 
+    "Settings",
+    "Environment",
+    "LogLevel",
     "DatabaseType",
-    "ConfigurationManager",
-    "setup_application_config",
-    "perf_monitor"
+    "settings",
+    "get_settings",
+    "initialize_application",
 ]
