@@ -1,8 +1,36 @@
-# Python
+# =============================================================================
+# AUTO-ANALYST PLATFORM - GIT IGNORE CONFIGURATION
+# =============================================================================
+#
+# Comprehensive .gitignore for ML/Data Science Python project
+# Prevents tracking of temporary files, sensitive data, and build artifacts
+# while preserving essential configuration and sample data files
+#
+# Structure:
+# - Python & Virtual Environments
+# - Environment & Configuration Files
+# - Database & Storage
+# - Machine Learning & Data Science
+# - Development Tools & IDEs
+# - Operating System Files
+# - Build & Deployment Artifacts
+# - Testing & Coverage
+# - Monitoring & Logs
+# =============================================================================
+
+# =============================================================================
+# PYTHON & VIRTUAL ENVIRONMENTS
+# =============================================================================
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,97 +44,458 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual Environments
+# Virtual environments (multiple naming conventions)
 venv/
 env/
 ENV/
 venv.bak/
 env.bak/
+.venv/
+.env_venv/
+virtualenv/
+Pipfile.lock
 
-# Environment Files
+# Poetry virtual environments
+.venv/
+poetry.lock
+
+# Conda environments
+.conda/
+environment.yml.lock
+
+# =============================================================================
+# ENVIRONMENT & CONFIGURATION FILES
+# =============================================================================
+
+# Environment files (NEVER commit secrets)
 .env
 .env.local
-.env.production
-.env.staging
+.env.*.local
+.env.development.local
+.env.staging.local
+.env.production.local
+.env.test.local
 
-# Database
+# Configuration files with secrets
+config.json
+secrets.json
+.secrets/
+credentials.json
+service-account-key.json
+
+# SSL certificates and keys
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+certs/
+ssl/
+
+# =============================================================================
+# DATABASE & STORAGE
+# =============================================================================
+
+# Local databases
 *.db
 *.sqlite
 *.sqlite3
+*.db-shm
+*.db-wal
 
-# MLflow
+# Database dumps and backups
+*.sql
+*.dump
+backup/
+dumps/
+
+# =============================================================================
+# MACHINE LEARNING & DATA SCIENCE
+# =============================================================================
+
+# MLflow experiment tracking
 mlflow.db
 mlruns/
-artifacts/
+mlartifacts/
+.mlflow/
 
-# Temporary Files
-temp/
-tmp/
-*.tmp
-*.log
-
-# Model Files
+# Model files (exclude trained models, keep example/sample models in repo)
+models/trained/
+models/checkpoints/
+models/experiments/
 *.pkl
 *.joblib
 *.h5
 *.pb
-models/
-checkpoints/
+*.onnx
+*.torchscript
+*.tflite
 
-# Data Files
-data/
-datasets/
+# Keep sample/example models (uncomment if needed)
+# !models/examples/
+# !models/samples/
+
+# TensorBoard logs
+logs/tensorboard/
+runs/
+tb_logs/
+
+# Weights & Biases
+wandb/
+
+# Experiment tracking
+experiments/
+results/
+outputs/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Jupyter Notebook outputs (optional - uncomment to track outputs)
+# *.ipynb
+
+# =============================================================================
+# DATA FILES & DATASETS
+# =============================================================================
+
+# Large datasets (exclude from repo, keep samples)
+data/raw/
+data/processed/
+data/interim/
+data/external/
+datasets/large/
+datasets/processed/
+
+# Upload directories
 uploads/
+user_data/
+temp_data/
+
+# Large data files (keep small sample files)
 *.csv
 *.xlsx
-*.json
+*.xls
 *.parquet
+*.feather
+*.hdf5
+*.h5
 
-# IDE
+# Keep sample data (uncomment specific patterns as needed)
+# !data/samples/
+# !data/examples/
+# !**/sample_*.csv
+# !**/example_*.json
+
+# =============================================================================
+# TEMPORARY & CACHE FILES
+# =============================================================================
+
+# General temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+.cache/
+cache/
+
+# Log files
+*.log
+logs/
+*.log.*
+log/
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*~
+*.swp
+*.swo
+
+# =============================================================================
+# DEVELOPMENT TOOLS & IDEs
+# =============================================================================
+
+# Visual Studio Code
 .vscode/
+*.code-workspace
+
+# PyCharm
 .idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
 *.swp
 *.swo
 *~
+.netrwhist
 
-# OS
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Spyder
+.spyderproject
+.spyproject
+
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+
+# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
 ehthumbs.db
 Thumbs.db
+Thumbs.db:encryptable
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# TESTING & COVERAGE
+# =============================================================================
 
 # Testing
 .pytest_cache/
-.coverage
-htmlcov/
 .tox/
+.nox/
+.coverage
+.coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *.cover
+*.py,cover
 .hypothesis/
+htmlcov/
+.testmondata
 
-# Jupyter
-.ipynb_checkpoints
+# Performance testing
+.benchmarks/
 
-# Docker
-Dockerfile*
-docker-compose*.yml
+# =============================================================================
+# BUILD & DEPLOYMENT ARTIFACTS
+# =============================================================================
+
+# Docker build context (keep Dockerfiles and compose files)
 .dockerignore
+# Note: Keep Dockerfile and docker-compose.yml in version control
 
-# Kubernetes
-k8s/
-*.yaml
-*.yml
+# Build artifacts
+target/
+*.tar.gz
+*.zip
+*.rar
 
-# Monitoring
-prometheus/
-grafana/
+# Deployment packages
+package/
+deploy/
+
+# =============================================================================
+# MONITORING & OBSERVABILITY
+# =============================================================================
+
+# Prometheus data
+prometheus_data/
+prometheus/data/
+
+# Grafana data
+grafana_data/
+grafana/data/
+
+# Application logs
+app.log
+application.log
+debug.log
+error.log
+
+# =============================================================================
+# CLOUD & INFRASTRUCTURE
+# =============================================================================
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfvars
+
+# Pulumi
+Pulumi.*.yaml
+.pulumi/
+
+# AWS
+.aws/
+
+# Google Cloud
+.gcloud/
+gcloud-service-key.json
+
+# Azure
+.azure/
+
+# =============================================================================
+# PACKAGE MANAGERS & DEPENDENCIES
+# =============================================================================
+
+# npm (if using Node.js tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn/
+package-lock.json
+yarn.lock
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# =============================================================================
+# SPECIFIC PROJECT EXCLUSIONS
+# =============================================================================
+
+# Auto-Analyst specific patterns
+models/artifacts/
+models/exports/
+data/exports/
+notebooks/experiments/output/
+logs/application*.log
+
+# User uploads and temporary processing
+uploads/*.csv
+uploads/*.xlsx
+uploads/*.json
+temp/*.csv
+temp/*.json
+
+# Analysis results (keep templates, exclude user results)
+results/user_*/
+analysis_*.json
+report_*.html
+
+# =============================================================================
+# SECURITY & SENSITIVE DATA
+# =============================================================================
+
+# API keys and tokens
+.env.keys
+api_keys.txt
+tokens.json
+*.token
+
+# SSH keys
+id_rsa
+id_rsa.pub
+*.pem
+known_hosts
+
+# GPG keys
+*.gpg
+*.asc
+
+# =============================================================================
+# PERFORMANCE & PROFILING
+# =============================================================================
+
+# Profiling results
+*.prof
+*.profile
+.prof/
+profiling/
+
+# Memory dumps
+*.dmp
+*.dump
+
+# =============================================================================
+# EXCEPTIONS - FILES TO ALWAYS TRACK
+# =============================================================================
+
+# Important: Use ! to force-include essential files that might match patterns above
+
+# Keep essential configuration templates
+!.env.example
+!config.example.json
+!docker-compose.example.yml
+
+# Keep sample data and models (small files only)
+!data/samples/
+!models/examples/
+!**/sample.csv
+!**/example.json
+
+# Keep deployment configurations
+!Dockerfile
+!docker-compose.yml
+!docker-compose.*.yml
+!k8s/*.yaml
+!k8s/*.yml
+!.github/
+!.gitlab-ci.yml
+!render.yaml
+!railway.json
+
+# Keep essential documentation data
+!docs/**/*.csv
+!docs/**/*.json
+
+# Keep test fixtures
+!tests/fixtures/
+!tests/data/
+
+# =============================================================================
+# CUSTOM PROJECT PATTERNS
+# =============================================================================
+
+# Add your project-specific patterns below:
+#
+# Example:
+# custom_output/
+# *.custom
+# project_specific_temp/
+
+# End of .gitignore
