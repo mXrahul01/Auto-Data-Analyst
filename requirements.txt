@@ -1,132 +1,240 @@
-# Auto-Analyst Platform Dependencies
-# Production-ready with pinned versions for stability
+# =============================================================================
+# AUTO-ANALYST PLATFORM - PRODUCTION DEPENDENCIES
+# =============================================================================
+#
+# DEPLOYMENT STRATEGY:
+# - Core dependencies kept minimal for fast deployment
+# - Optional ML packages can be installed separately
+# - Development dependencies in separate requirements-dev.txt
+# - Use pip-tools for dependency resolution and security
+#
+# INSTALL COMMANDS:
+# pip install -r requirements.txt                    # Core only
+# pip install -r requirements.txt -r requirements-ml.txt  # With ML
+# pip install -r requirements-dev.txt               # Development
+#
+# SECURITY: Run 'pip-audit' and 'safety check' before deployment
+# UPDATES: Use 'pip-compile' to update with dependency resolution
+# =============================================================================
 
-# ============================================
-# CORE WEB FRAMEWORK
-# ============================================
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-gunicorn==21.2.0
-python-multipart==0.0.6
+# =============================================================================
+# PYTHON VERSION CONSTRAINT
+# =============================================================================
+# Ensure compatible Python version across all environments
+python_requires>=3.9,<3.13
 
-# ============================================
-# DATABASE & ORM
-# ============================================
-sqlalchemy==2.0.23
-alembic==1.12.1
-psycopg2-binary==2.9.9
-asyncpg==0.29.0
+# =============================================================================
+# CORE WEB FRAMEWORK & SERVER (Essential - Always Required)
+# =============================================================================
 
-# ============================================
-# DATA VALIDATION & SERIALIZATION
-# ============================================
-pydantic==2.5.0
-pydantic-settings==2.1.0
+# FastAPI ecosystem - Production-ready async web framework
+fastapi==0.104.1              # Main web framework with OpenAPI support
+uvicorn[standard]==0.24.0     # ASGI server with websockets and HTTP/2
+gunicorn==21.2.0              # Production WSGI server for scaling
+python-multipart==0.0.6      # File upload support for FastAPI
 
-# ============================================
-# AUTHENTICATION & SECURITY
-# ============================================
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-cryptography==41.0.7
+# =============================================================================
+# DATA VALIDATION & SERIALIZATION (Essential)
+# =============================================================================
 
-# ============================================
-# DATA PROCESSING CORE
-# ============================================
-pandas==2.1.4
-numpy==1.25.2
-scikit-learn==1.3.2
+# Pydantic v2 - Data validation and settings management
+pydantic==2.5.0               # Core validation with improved performance
+pydantic-settings==2.1.0     # Environment-based configuration management
+email-validator==2.1.0       # Email validation for user inputs
 
-# ============================================
-# MACHINE LEARNING ALGORITHMS
-# ============================================
-xgboost==2.0.2
-lightgbm==4.1.0
-catboost==1.2.2
+# =============================================================================
+# DATABASE & ORM (Essential)
+# =============================================================================
 
-# ============================================
-# DEEP LEARNING (Optional - Large dependencies)
-# ============================================
-# tensorflow==2.15.0  # Uncomment if needed - 500MB+
-# torch==2.1.2         # Uncomment if needed - 800MB+
-# transformers==4.36.2 # Uncomment if needed - 400MB+
+# SQLAlchemy ecosystem - Robust ORM with async support
+sqlalchemy==2.0.23           # Modern ORM with type hints and async
+alembic==1.12.1              # Database migrations and schema versioning
 
-# ============================================
-# TIME SERIES & FORECASTING
-# ============================================
-prophet==1.1.4
-statsmodels==0.14.1
+# Database drivers (choose based on deployment)
+psycopg2-binary==2.9.9       # PostgreSQL driver (production recommended)
+asyncpg==0.29.0              # Async PostgreSQL driver for better performance
+# sqlite3 included in Python stdlib - no additional dependency needed
 
-# ============================================
-# FILE PROCESSING
-# ============================================
-aiofiles==23.2.1
-openpyxl==3.1.2
-pyarrow==14.0.2
+# =============================================================================
+# SECURITY & AUTHENTICATION (Essential)
+# =============================================================================
 
-# ============================================
-# VISUALIZATION
-# ============================================
-plotly==5.17.0
-seaborn==0.13.0
-matplotlib==3.8.2
+# Authentication and cryptography
+python-jose[cryptography]==3.3.0  # JWT token handling with RSA support
+passlib[bcrypt]==1.7.4            # Password hashing with bcrypt
+cryptography==41.0.7              # Core cryptographic functions
+python-dotenv==1.0.0              # Environment variable loading
 
-# ============================================
-# STATISTICS & MATH
-# ============================================
-scipy==1.11.4
+# =============================================================================
+# HTTP CLIENT & UTILITIES (Essential)
+# =============================================================================
 
-# ============================================
-# HYPERPARAMETER TUNING
-# ============================================
-optuna==3.4.0
+# HTTP clients and utilities
+httpx==0.25.2                # Modern async HTTP client
+requests==2.31.0             # Synchronous HTTP client (widely used)
+aiofiles==23.2.1             # Async file operations
 
-# ============================================
-# MODEL EXPLAINABILITY
-# ============================================
-shap==0.43.0
-lime==0.2.0.1
+# =============================================================================
+# CORE DATA PROCESSING (Required for ML functionality)
+# =============================================================================
 
-# ============================================
-# MLOPS & EXPERIMENT TRACKING
-# ============================================
-mlflow==2.8.1
+# Essential data science stack
+numpy==1.25.2                # Numerical computing foundation
+pandas==2.1.4                # Data manipulation and analysis
+scipy==1.11.4                # Scientific computing utilities
 
-# ============================================
-# BACKGROUND TASKS
-# ============================================
-redis==5.0.1
-celery==5.3.4
+# =============================================================================
+# BASIC MACHINE LEARNING (Core ML functionality)
+# =============================================================================
 
-# ============================================
-# MONITORING & OBSERVABILITY
-# ============================================
-prometheus-client==0.19.0
-prometheus-fastapi-instrumentator==6.1.0
+# Lightweight ML essentials
+scikit-learn==1.3.2          # Core ML algorithms and utilities
+joblib==1.3.2                # Efficient serialization for ML models
+cloudpickle==3.0.0           # Enhanced pickling for complex objects
 
-# ============================================
-# UTILITIES
-# ============================================
-joblib==1.3.2
-cloudpickle==3.0.0
-requests==2.31.0
-python-dotenv==1.0.0
-httpx==0.25.2
-psutil==5.9.6
-dateutil==2.8.2
+# =============================================================================
+# FILE PROCESSING & DATA FORMATS (Required for data ingestion)
+# =============================================================================
 
-# ============================================
-# FEATURE ENGINEERING
-# ============================================
-category-encoders==2.5.1
-imbalanced-learn==0.11.0
+# File format support
+openpyxl==3.1.2              # Excel file reading/writing
+pyarrow==14.0.2              # Parquet and Arrow format support
+python-dateutil==2.8.2       # Enhanced date/time parsing
 
-# ============================================
-# DEVELOPMENT & TESTING (Optional)
-# ============================================
-# pytest==7.4.3
-# pytest-asyncio==0.21.1
-# pytest-cov==4.1.0
-# flake8==6.1.0
-# mypy==1.7.1
-# black==23.11.0
+# =============================================================================
+# BASIC VISUALIZATION (Lightweight plotting)
+# =============================================================================
+
+# Minimal visualization stack
+matplotlib==3.8.2            # Core plotting library
+seaborn==0.13.0              # Statistical visualization
+
+# =============================================================================
+# BACKGROUND TASKS & CACHING (Production essentials)
+# =============================================================================
+
+# Redis and task queue (optional but recommended for production)
+redis==5.0.1                 # Redis client for caching and sessions
+celery==5.3.4                # Distributed task queue for background jobs
+
+# =============================================================================
+# MONITORING & OBSERVABILITY (Production monitoring)
+# =============================================================================
+
+# Application monitoring
+prometheus-client==0.19.0            # Metrics collection and export
+prometheus-fastapi-instrumentator==6.1.0  # FastAPI metrics integration
+
+# System monitoring utilities
+psutil==5.9.6                # System and process monitoring
+
+# =============================================================================
+# PRODUCTION UTILITIES
+# =============================================================================
+
+# Production helpers
+click==8.1.7                 # Command-line interface creation
+rich==13.7.0                 # Rich text and progress bars
+structlog==23.2.0            # Structured logging for production
+
+# =============================================================================
+# DEVELOPMENT & TESTING DEPENDENCIES
+# =============================================================================
+# Note: Move these to requirements-dev.txt for production builds
+
+# Testing framework (commented for production)
+# pytest==7.4.3              # Testing framework
+# pytest-asyncio==0.21.1     # Async testing support
+# pytest-cov==4.1.0          # Code coverage reporting
+# httpx==0.25.2              # Already included above for testing
+
+# Code quality (commented for production)
+# black==23.11.0              # Code formatting
+# flake8==6.1.0               # Linting and style checking
+# mypy==1.7.1                 # Static type checking
+# pre-commit==3.5.0           # Git hooks for code quality
+
+# =============================================================================
+# OPTIONAL ML EXTENSIONS (Install separately if needed)
+# =============================================================================
+#
+# For advanced ML features, create requirements-ml.txt with:
+#
+# # Gradient Boosting Libraries
+# xgboost==2.0.2              # XGBoost - memory efficient
+# lightgbm==4.1.0             # LightGBM - fast training
+# catboost==1.2.2             # CatBoost - categorical features
+#
+# # Time Series Analysis
+# prophet==1.1.4              # Facebook Prophet forecasting
+# statsmodels==0.14.1         # Statistical models
+#
+# # Advanced ML Tools
+# optuna==3.4.0               # Hyperparameter optimization
+# shap==0.43.0                # Model explainability
+#
+# # Deep Learning (Very Heavy - ~2GB each)
+# # torch==2.1.2              # PyTorch for deep learning
+# # tensorflow==2.15.0        # TensorFlow for deep learning
+# # transformers==4.36.2      # Hugging Face transformers
+#
+# # MLOps Tools
+# mlflow==2.8.1               # Experiment tracking
+#
+# # Advanced Data Processing
+# dask==2023.12.0             # Parallel computing
+# polars==0.20.0              # Fast DataFrame library
+
+# =============================================================================
+# SECURITY & COMPLIANCE TOOLS (Production recommended)
+# =============================================================================
+
+# Security scanning (install in CI/CD pipeline)
+# pip-audit                   # Vulnerability scanning
+# safety                      # Security check for known vulnerabilities
+# bandit                      # Security linter for Python
+
+# =============================================================================
+# PLATFORM-SPECIFIC OPTIMIZATIONS
+# =============================================================================
+
+# For Render.com deployment, add these environment variables:
+# PYTHON_VERSION=3.11
+# BUILD_COMMAND=pip install --upgrade pip && pip install -r requirements.txt
+# START_COMMAND=gunicorn main:app -w 2 -k uvicorn.workers.UvicornWorker
+
+# For Docker deployment, use multi-stage builds:
+# Stage 1: Install dependencies
+# Stage 2: Copy only necessary files for runtime
+
+# =============================================================================
+# DEPENDENCY SIZE BREAKDOWN (Approximate)
+# =============================================================================
+# Core Framework: ~50MB (FastAPI, Uvicorn, Pydantic)
+# Database: ~30MB (SQLAlchemy, Alembic, Drivers)
+# Data Processing: ~200MB (Pandas, NumPy, SciPy)
+# Basic ML: ~150MB (Scikit-learn, Joblib)
+# Utilities: ~50MB (Various utilities)
+# TOTAL CORE: ~480MB (Within most platform limits)
+#
+# Optional ML Extensions: ~1.5GB additional
+# Deep Learning: ~2-4GB additional
+
+# =============================================================================
+# MAINTENANCE COMMANDS
+# =============================================================================
+#
+# Update dependencies safely:
+# pip-compile requirements.in --upgrade
+#
+# Check for security vulnerabilities:
+# pip-audit
+# safety check
+#
+# Generate dependency tree:
+# pipdeptree
+#
+# Check for outdated packages:
+# pip list --outdated
+#
+# =============================================================================
