@@ -499,3 +499,25 @@ profiling/
 # project_specific_temp/
 
 # End of .gitignore
+
+# Microservices foundation
+services/**/.venv/
+services/**/.pytest_cache/
+services/**/.ruff_cache/
+frontend/microservices/node_modules/
+frontend/microservices/dist/
+frontend/microservices/*.tsbuildinfo
+.env.microservices
+.runtime/
+!.env.microservices.example
+!.dockerignore
+!services/**/.dockerignore
+!sample_data/
+!sample_data/*.csv
+!shared/**/*.json
+!frontend/microservices/package.json
+!frontend/microservices/package-lock.json
+!frontend/microservices/tsconfig.json
+!services/**/uv.lock
+!.github/
+!.github/**
