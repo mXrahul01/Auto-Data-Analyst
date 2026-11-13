@@ -1,5 +1,8 @@
 # Auto Data Analyst 🚀
 
+> **New microservices scaffold:** See [the setup and repository guide](docs/MICROSERVICES.md) for the new service packages and React workspace. The new architecture currently implements bootstrap health checks and a service-status page; data workflows are planned. Existing implementation files and the earlier description below are preserved and have not been audited as part of this scaffold.
+
+
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

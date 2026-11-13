@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.microservices.example
+**/node_modules
+**/.venv
+**/__pycache__
+**/dist
+backend
+models
+data
+logs
+notebooks

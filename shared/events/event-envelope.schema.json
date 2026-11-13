@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DomainEventEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "schema_version",
+    "occurred_at",
+    "producer",
+    "correlation_id",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "enum": [
+        "dataset.uploaded",
+        "dataset.parsed",
+        "profiling.completed",
+        "recipe.applied",
+        "dashboard.created",
+        "training.started",
+        "training.completed",
+        "training.failed",
+        "export.ready"
+      ]
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "producer": {
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

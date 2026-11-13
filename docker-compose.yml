@@ -1,0 +1,97 @@
+name: auto-data-analyst
+x-api: &api
+  restart: unless-stopped
+  init: true
+  environment:
+    ADA_APP_ENV: development
+  networks: [internal]
+  mem_limit: 256m
+  cpus: 0.5
+services:
+  api-gateway:
+    <<: *api
+    build: ./services/api-gateway
+  ingestion-service:
+    <<: *api
+    build: ./services/ingestion-service
+  profiling-service:
+    <<: *api
+    build: ./services/profiling-service
+  transformation-service:
+    <<: *api
+    build: ./services/transformation-service
+  analytics-service:
+    <<: *api
+    build: ./services/analytics-service
+    profiles: [extended]
+  dashboard-service:
+    <<: *api
+    build: ./services/dashboard-service
+    profiles: [extended]
+  ml-service:
+    <<: *api
+    build: ./services/ml-service
+  job-service:
+    <<: *api
+    build: ./services/job-service
+  auth-service:
+    <<: *api
+    build: ./services/auth-service
+    profiles: [extended]
+  export-service:
+    <<: *api
+    build: ./services/export-service
+    profiles: [extended]
+  worker:
+    <<: *api
+    build: ./services/job-service
+    profiles: [workers]
+    command: ["/srv/.venv/bin/celery", "-A", "app.worker:celery_app", "worker", "--loglevel=INFO", "--concurrency=1"]
+    environment:
+      ADA_CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      redis: {condition: service_healthy}
+    # No HTTP server in this process; use Celery inspection when needed.
+    healthcheck: {disable: true}
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ada_development}
+      POSTGRES_USER: ${POSTGRES_USER:-ada_local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.microservices.example and set a local password}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redis_data:/data]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/microservices/Dockerfile
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      api-gateway: {condition: service_healthy}
+      ingestion-service: {condition: service_healthy}
+      profiling-service: {condition: service_healthy}
+      transformation-service: {condition: service_healthy}
+      ml-service: {condition: service_healthy}
+      job-service: {condition: service_healthy}
+    networks: [internal]
+networks:
+  internal:
+    internal: true
+volumes:
+  postgres_data:
+  redis_data:
